@@ -1,3 +1,9 @@
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::cargo)]
+#![warn(rustdoc::all)]
+#![no_std]
+
 use embedded_hal::serial::{Read, Write};
 
 extern crate alloc;
@@ -6,7 +12,7 @@ mod commands;
 mod responses;
 mod urc;
 
-struct Rui3Radio<SERIAL>
+pub struct Rui3Radio<SERIAL>
 where
     SERIAL: Read<u8> + Write<u8>,
 {

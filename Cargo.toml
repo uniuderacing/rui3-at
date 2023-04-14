@@ -2,6 +2,13 @@
 name = "rui3-at"
 version = "0.1.0"
 edition = "2021"
+authors = ["Riccardo Persello <riccardo.persello@icloud.com>"]
+description = "AT command parser for RUI3-compatible radios."
+license = "MIT"
+repository = "https://github.com/uniuderacing/rui3-at"
+readme = "README.md"
+keywords = ["at", "parser", "rui3", "radio", "lora", "rak"]
+categories = ["embedded", "hardware-support", "no-std"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

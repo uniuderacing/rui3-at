@@ -1,5 +1,7 @@
 use atat::AtatUrc;
 use text_io::scan;
+use alloc::vec::Vec;
+use alloc::string::String;
 
 pub enum URCMessages {
     PeerToPeerData(Vec<u8>),
@@ -7,7 +9,7 @@ pub enum URCMessages {
 }
 
 impl AtatUrc for URCMessages {
-    type Response = URCMessages;
+    type Response = Self;
 
     fn parse(resp: &[u8]) -> Option<Self::Response> {
         if &resp[..=4] == b"+EVT:" {
@@ -21,7 +23,7 @@ impl AtatUrc for URCMessages {
                 
                 scan!(status.bytes() => "RXP2P, RSSI {}, SNR {}", rssi, snr);
 
-                return Some(URCMessages::PeerToPeerInfo { rssi, snr });
+                return Some(Self::PeerToPeerInfo { rssi, snr });
             }
 
             // Peer to peer data.
@@ -37,7 +39,7 @@ impl AtatUrc for URCMessages {
                     data.push(byte);
                 }
 
-                return Some(URCMessages::PeerToPeerData(data));
+                return Some(Self::PeerToPeerData(data));
             }
         }
 
