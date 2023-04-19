@@ -1,5 +1,10 @@
-use crate::responses::{NoResponse, p2p::{P2PFrequencyResponse, P2PSpreadingFactorResponse}};
-use atat::{atat_derive::{AtatCmd, AtatEnum}, AtatLen, serde_at::serde::Serialize};
+use crate::responses::{p2p::*, NoResponse};
+use alloc::string::String;
+use atat::{
+    atat_derive::{AtatCmd, AtatEnum},
+    serde_at::serde::Serialize,
+    AtatLen,
+};
 
 #[derive(Clone, AtatEnum)]
 pub enum WorkingMode {
@@ -30,7 +35,8 @@ impl AtatLen for Bandwidth {
 impl Serialize for Bandwidth {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: atat::serde_at::serde::Serializer {
+        S: atat::serde_at::serde::Serializer,
+    {
         match self {
             Self::LoRa125KHz => serializer.serialize_str("0"),
             Self::LoRa250KHz => serializer.serialize_str("1"),
@@ -54,7 +60,7 @@ pub struct SetNetworkWorkingMode {
 }
 
 #[derive(Clone, AtatCmd)]
-#[at_cmd("+NWM=?", NoResponse)]
+#[at_cmd("+NWM=?", NetworkWorkingModeResponse)]
 pub struct GetNetworkWorkingMode {}
 
 #[derive(Clone, AtatCmd)]
@@ -87,5 +93,123 @@ pub struct SetP2PBandwidth {
 #[at_cmd("+PBW=?", NoResponse)]
 pub struct GetP2PBandwidth {}
 
+//TODO: fix PCR
 
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+PCR", NoResponse)]
+pub struct SetCodeRate {
+    pub coderate: u8,
+}
 
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+PCR=?", P2PCodeRate)]
+pub struct GetCodeRate {}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+PPL", NoResponse)]
+pub struct SetPreambleLength {
+    pub preamblelength: u16,
+}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+PPL=?", P2PPreambleLength)]
+pub struct GetPreambleLength {}
+
+//TODO: values range in 5-22
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+PTP", NoResponse)]
+pub struct SetTxPower {
+    pub txpower: u8,
+}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+PTP=?", P2PTxPower)]
+pub struct GetPTxPower {}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+PSEND", NoResponse)]
+pub struct SetPayload {
+    pub payload: atat::heapless::String<500>,
+}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+PRECV", NoResponse)]
+pub struct SetRecivingWindow {
+    pub window: u16,
+}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+ENCRY", NoResponse)]
+pub struct SetEncryptionMode {
+    pub encryption: bool,
+}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+ENCRY=?", P2PEncryptionMode)]
+pub struct GetEncryptionMode {}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+ENCKEY", NoResponse)]
+pub struct SetEncryptionKey {
+    pub encryption_key: atat::heapless::String<16>,
+}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+ENCKEY=?", P2PEncryptionKey)]
+pub struct GetEncryptionKey {}
+
+//TODO: P2P
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+IQINVER", NoResponse)]
+pub struct SetIQInversion {
+    pub iq_inversion: bool,
+}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+IQINVER=?", P2PIQInversion)]
+pub struct GetIqInversion {}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+SYNCWORD", NoResponse)]
+pub struct SetSyncWord {
+    pub sync_word: atat::heapless::String<4>,
+}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+SYNCWORD=?", P2PSyncWord)]
+pub struct GetSyncWord {}
+
+// #[derive(Clone, AtatCmd)]
+// #[at_cmd("+RFFREQUENCY", NoResponse)]
+// pub struct SetRfFrequency{
+//     pub frequency: u32,
+// }
+
+// #[derive(Clone, AtatCmd)]
+// #[at_cmd("+RFFREQUENCY=?", P2PFrequency)]
+// pub struct GetRfFrequency{}
+
+//TODO: values range in 5-22
+//Already present as PTP
+
+// #[derive(Clone, AtatCmd)]
+// #[at_cmd("+TXOUTPUTPOWER", NoResponse)]
+// pub struct SetTxPower{
+//     pub tx_power: u8,
+// }
+
+// #[derive(Clone, AtatCmd)]
+// #[at_cmd("+TXOUTPUTPOWER=?", P2PTxPower)]
+// pub struct GetTxPower{}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+SYMBOLTIMEOUT", NoResponse)]
+pub struct SetSymbolTimeout {
+    pub symbol_timeout: u8,
+}
+
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+SYMBOLTIMEOUT=?", P2PSymbolTimeout)]
+pub struct GetSymbolTimeout {}
