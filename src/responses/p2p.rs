@@ -1,4 +1,4 @@
-use crate::commands::p2p::WorkingMode;
+use crate::commands::p2p::{CodeRate, WorkingMode};
 use atat::atat_derive::AtatResp;
 
 #[derive(Clone, AtatResp)]
@@ -22,7 +22,7 @@ pub struct P2PSpreadingFactorResponse {
 #[derive(Clone, AtatResp)]
 pub struct P2PCodeRate {
     #[at_arg(position = 0)]
-    pub coderate: u8,
+    pub coderate: CodeRate,
 }
 
 #[derive(Clone, AtatResp)]

@@ -13,6 +13,14 @@ pub enum WorkingMode {
     FskP2P = 2,
 }
 
+#[derive(Clone, AtatEnum)]
+pub enum CodeRate {
+    PCR4_5 = 0,
+    PCR4_6 = 1,
+    PCR4_7 = 2,
+    PCR4_8 = 3,
+}
+
 #[derive(Clone)]
 pub enum Bandwidth {
     LoRa125KHz,
@@ -93,12 +101,10 @@ pub struct SetP2PBandwidth {
 #[at_cmd("+PBW=?", NoResponse)]
 pub struct GetP2PBandwidth {}
 
-//TODO: fix PCR
-
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PCR", NoResponse)]
 pub struct SetCodeRate {
-    pub coderate: u8,
+    pub coderate: CodeRate,
 }
 
 #[derive(Clone, AtatCmd)]
@@ -114,8 +120,6 @@ pub struct SetPreambleLength {
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PPL=?", P2PPreambleLength)]
 pub struct GetPreambleLength {}
-
-//TODO: values range in 5-22
 
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PTP", NoResponse)]
@@ -162,6 +166,10 @@ pub struct GetEncryptionKey {}
 //TODO: P2P
 
 #[derive(Clone, AtatCmd)]
+#[at_cmd("+P2P=?", P2PEncryptionKey)]
+pub struct SetP2P {}
+
+#[derive(Clone, AtatCmd)]
 #[at_cmd("+IQINVER", NoResponse)]
 pub struct SetIQInversion {
     pub iq_inversion: bool,
@@ -180,29 +188,6 @@ pub struct SetSyncWord {
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+SYNCWORD=?", P2PSyncWord)]
 pub struct GetSyncWord {}
-
-// #[derive(Clone, AtatCmd)]
-// #[at_cmd("+RFFREQUENCY", NoResponse)]
-// pub struct SetRfFrequency{
-//     pub frequency: u32,
-// }
-
-// #[derive(Clone, AtatCmd)]
-// #[at_cmd("+RFFREQUENCY=?", P2PFrequency)]
-// pub struct GetRfFrequency{}
-
-//TODO: values range in 5-22
-//Already present as PTP
-
-// #[derive(Clone, AtatCmd)]
-// #[at_cmd("+TXOUTPUTPOWER", NoResponse)]
-// pub struct SetTxPower{
-//     pub tx_power: u8,
-// }
-
-// #[derive(Clone, AtatCmd)]
-// #[at_cmd("+TXOUTPUTPOWER=?", P2PTxPower)]
-// pub struct GetTxPower{}
 
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+SYMBOLTIMEOUT", NoResponse)]
