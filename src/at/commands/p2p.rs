@@ -61,6 +61,32 @@ impl Serialize for Bandwidth {
     }
 }
 
+#[derive(Clone)]
+pub enum ReceiveWindow {
+    Milliseconds(u16),
+    OnePacket,
+    Continuous,
+    StopListening,
+}
+
+impl AtatLen for ReceiveWindow {
+    const LEN: usize = 5;
+}
+
+impl Serialize for ReceiveWindow {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: atat::serde_at::serde::Serializer,
+    {
+        match self {
+            Self::Milliseconds(ms) => serializer.serialize_str(alloc::format!("{ms}").as_str()),
+            Self::OnePacket => serializer.serialize_str("65535"),
+            Self::Continuous => serializer.serialize_str("65534"),
+            Self::StopListening => serializer.serialize_str("0"),
+        }
+    }
+}
+
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+NWM", NoResponse)]
 pub struct SetNetworkWorkingMode {
@@ -133,14 +159,14 @@ pub struct GetPTxPower {}
 
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PSEND", NoResponse)]
-pub struct SetPayload {
+pub struct SendData {
     pub payload: atat::heapless::String<500>,
 }
 
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PRECV", NoResponse)]
-pub struct SetRecivingWindow {
-    pub window: u16,
+pub struct ReceiveData {
+    pub window: ReceiveWindow,
 }
 
 #[derive(Clone, AtatCmd)]
@@ -166,12 +192,12 @@ pub struct GetEncryptionKey {}
 //TODO: P2P
 
 #[derive(Clone, AtatCmd)]
-#[at_cmd("+P2P=?", P2PEncryptionKey)]
+#[at_cmd("+P2P", P2PEncryptionKey)]
 pub struct SetP2P {}
 
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+IQINVER", NoResponse)]
-pub struct SetIQInversion {
+pub struct SetIqInversion {
     pub iq_inversion: bool,
 }
 

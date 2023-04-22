@@ -17,5 +17,4 @@ no-std = true
 
 [dependencies]
 atat = { version = "0.18.0" }
-embedded-hal = { version = "0.2.7" }
 text_io = { version = "0.1.12" }
