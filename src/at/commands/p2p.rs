@@ -1,5 +1,5 @@
-use crate::responses::{p2p::*, NoResponse};
-use alloc::string::String;
+#[allow(clippy::wildcard_imports)]
+use crate::at::responses::{p2p::*, NoResponse};
 use atat::{
     atat_derive::{AtatCmd, AtatEnum},
     serde_at::serde::Serialize,

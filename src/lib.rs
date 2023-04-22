@@ -8,9 +8,7 @@ use embedded_hal::serial::{Read, Write};
 
 extern crate alloc;
 
-mod commands;
-mod responses;
-mod urc;
+mod at;
 
 pub struct Rui3Radio<SERIAL>
 where

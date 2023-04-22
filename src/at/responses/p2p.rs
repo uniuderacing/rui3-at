@@ -1,4 +1,4 @@
-use crate::commands::p2p::{CodeRate, WorkingMode};
+use crate::at::commands::p2p::{CodeRate, WorkingMode};
 use atat::atat_derive::AtatResp;
 
 #[derive(Clone, AtatResp)]

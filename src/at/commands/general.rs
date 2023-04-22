@@ -1,7 +1,7 @@
-use crate::responses::general::{
+use crate::at::responses::general::{
     AliasResponse, FirmwareVersionResponse, HardwareVersionResponse, SerialNumberResponse,
 };
-use crate::responses::NoResponse;
+use crate::at::responses::NoResponse;
 use atat::atat_derive::AtatCmd;
 
 #[derive(Clone, AtatCmd)]
