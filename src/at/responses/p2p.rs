@@ -1,4 +1,4 @@
-use crate::at::commands::p2p::{CodeRate, WorkingMode};
+use crate::at::commands::p2p::{Bandwidth, CodeRate, WorkingMode};
 use atat::atat_derive::AtatResp;
 
 #[derive(Clone, AtatResp)]
@@ -17,6 +17,12 @@ pub struct P2PFrequencyResponse {
 pub struct P2PSpreadingFactorResponse {
     #[at_arg(position = 0)]
     pub spreading_factor: u8,
+}
+
+#[derive(Clone, AtatResp)]
+pub struct P2PBandwidth {
+    #[at_arg(position = 0)]
+    pub bandwidth: Bandwidth,
 }
 
 #[derive(Clone, AtatResp)]
@@ -47,6 +53,17 @@ pub struct P2PEncryptionMode {
 pub struct P2PEncryptionKey {
     #[at_arg(position = 0)]
     pub encryption_key: atat::heapless::String<16>,
+}
+
+#[derive(Clone, AtatResp)]
+pub struct P2Pparameters {
+    #[at_arg(position = 0)]
+    pub frequency: u32,
+    pub spreading_factor: u8,
+    pub bandwidth: Bandwidth,
+    pub coderate: CodeRate,
+    pub preamblelength: u16,
+    pub txpower: u8,
 }
 
 #[derive(Clone, AtatResp)]

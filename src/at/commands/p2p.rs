@@ -2,7 +2,7 @@
 use crate::at::responses::{p2p::*, NoResponse};
 use atat::{
     atat_derive::{AtatCmd, AtatEnum},
-    serde_at::serde::Serialize,
+    serde_at::serde::{Deserialize, Serialize},
     AtatLen,
 };
 
@@ -57,6 +57,28 @@ impl Serialize for Bandwidth {
             Self::LoRa41_67MHz => serializer.serialize_str("8"),
             Self::LoRa62_5MHz => serializer.serialize_str("9"),
             Self::FSK(bw) => serializer.serialize_str(alloc::format!("{bw}").as_str()),
+        }
+    }
+}
+
+impl<'a> Deserialize<'a> for Bandwidth {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: atat::serde_at::serde::Deserializer<'a>,
+    {
+        let s = atat::serde_at::serde::Deserialize::deserialize(deserializer)?;
+        match s {
+            "0" => Ok(Self::LoRa125KHz),
+            "1" => Ok(Self::LoRa250KHz),
+            "2" => Ok(Self::LoRa500KHz),
+            "3" => Ok(Self::LoRa7_8MHz),
+            "4" => Ok(Self::LoRa10_4MHz),
+            "5" => Ok(Self::LoRa15_63MHz),
+            "6" => Ok(Self::LoRa20_83MHz),
+            "7" => Ok(Self::LoRa31_25MHz),
+            "8" => Ok(Self::LoRa41_67MHz),
+            "9" => Ok(Self::LoRa62_5MHz),
+            _ => Ok(Self::FSK(s.parse().unwrap())),
         }
     }
 }
@@ -124,7 +146,7 @@ pub struct SetP2PBandwidth {
 }
 
 #[derive(Clone, AtatCmd)]
-#[at_cmd("+PBW=?", NoResponse)]
+#[at_cmd("+PBW=?", P2PBandwidth)]
 pub struct GetP2PBandwidth {}
 
 #[derive(Clone, AtatCmd)]
@@ -189,11 +211,20 @@ pub struct SetEncryptionKey {
 #[at_cmd("+ENCKEY=?", P2PEncryptionKey)]
 pub struct GetEncryptionKey {}
 
-//TODO: P2P
+#[derive(Clone, AtatCmd)]
+#[at_cmd("+P2P", NoResponse)]
+pub struct SetP2P {
+    pub frequency: u32,
+    pub spreading_factor: u8,
+    pub bandwidth: Bandwidth,
+    pub coderate: CodeRate,
+    pub preamblelength: u16,
+    pub txpower: u8,
+}
 
 #[derive(Clone, AtatCmd)]
-#[at_cmd("+P2P", P2PEncryptionKey)]
-pub struct SetP2P {}
+#[at_cmd("+P2P=?", P2Pparameters)]
+pub struct GetP2P {}
 
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+IQINVER", NoResponse)]
