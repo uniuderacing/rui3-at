@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::cargo)]
-#![warn(rustdoc::all, missing_docs)]
+#![warn(rustdoc::all)]
 #![no_std]
 
 extern crate alloc;
@@ -49,7 +49,7 @@ impl<C> Rui3Radio<C>
 where
     C: atat::AtatClient,
 {
-    pub fn new(client: C) -> Self {
+    pub const fn new(client: C) -> Self {
         Self {
             client,
             rssi: 0,
@@ -57,32 +57,35 @@ where
         }
     }
 
-    pub fn send(&self, data: &[u8]) -> Result<(), atat::Error> {
+    pub fn send(&mut self, data: &[u8]) -> Result<(), nb::Error<atat::Error>> {
         // Convert each byte of data to a hex string.
-        let data = data
-            .iter()
-            .map(|b| alloc::format!("{:02X}", b))
-            .collect::<alloc::vec::Vec<atat::heapless::String>>()
-            .join("");
+        let mut string_result: atat::heapless::String<500> = "".into();
 
-        let send_command = at::commands::p2p::SendData { payload: data };
+        data.iter()
+            .map(|b| alloc::format!("{b:02X}"))
+            .for_each(|s| string_result.push_str(&s).unwrap());
+
+        let send_command = at::commands::p2p::SendData {
+            payload: string_result,
+        };
 
         // Disable RX.
-        self.client
-            .send(&at::commands::p2p::ReceiveWindow::StopListening);
+        self.client.send(&at::commands::p2p::ReceiveData {
+            window: at::commands::p2p::ReceiveWindow::StopListening,
+        })?;
 
         // Send data.
         self.client.send(&send_command)?;
 
         // Re-enable RX.
-        // TODO: is this correct? Or is it blocking?
-        self.client
-            .send(&at::commands::p2p::ReceiveWindow::Continuous);
+        self.client.send(&at::commands::p2p::ReceiveData {
+            window: at::commands::p2p::ReceiveWindow::Continuous,
+        })?;
 
         Ok(())
     }
 
-    pub fn receive(&self) -> Result<alloc::vec::Vec<u8>, atat::Error> {
+    pub fn receive(&mut self) -> Result<alloc::vec::Vec<u8>, nb::Error<atat::Error>> {
         // Recieve is blocking until data is received.
 
         let receive_command = at::commands::p2p::ReceiveData {
@@ -90,7 +93,7 @@ where
         };
 
         // Enable RX.
-        self.client.send(&receive_command);
+        self.client.send(&receive_command)?;
 
         loop {
             // Check for URCs in loop.
@@ -103,7 +106,6 @@ where
                     // if hex_data.len() % 2 != 0 {
                     //     Err
                     // }
-
 
                     let hex_data = alloc::string::String::from_utf8(hex_data).unwrap();
                     let mut data = alloc::vec::Vec::new();
@@ -126,47 +128,54 @@ where
         }
     }
 
-    pub fn configure(&self, configuration: Configuration) {
+    pub fn configure(
+        &mut self,
+        configuration: Configuration,
+    ) -> Result<(), nb::Error<atat::Error>> {
         // Set the working mode.
-        self.client.send(&at::commands::p2p::SetNetworkWorkingMode {
-            mode: configuration.working_mode,
-        });
+        self.client
+            .send(&at::commands::p2p::SetNetworkWorkingMode {
+                mode: configuration.working_mode,
+            })?;
         // Set the frequency.
         self.client.send(&at::commands::p2p::SetP2PFrequency {
             frequency: configuration.frequency,
-        });
+        })?;
         // Set the spreading factor.
-        self.client.send(&at::commands::p2p::SetP2PSpreadingFactor {
-            spreading_factor: configuration.spreading_factor,
-        });
+        self.client
+            .send(&at::commands::p2p::SetP2PSpreadingFactor {
+                spreading_factor: configuration.spreading_factor,
+            })?;
         // Set the bandwidth.
         self.client.send(&at::commands::p2p::SetP2PBandwidth {
             bandwidth: configuration.bandwidth,
-        });
+        })?;
         // Set the code rate.
         self.client.send(&at::commands::p2p::SetCodeRate {
             code_rate: configuration.code_rate,
-        });
+        })?;
         // Set the preamble length.
         self.client.send(&at::commands::p2p::SetPreambleLength {
             preamble_length: configuration.preamble_length,
-        });
+        })?;
         // Set the TX power.
         self.client.send(&at::commands::p2p::SetTxPower {
             tx_power: configuration.tx_power,
-        });
+        })?;
         // Set the encryption key.
         self.client.send(&at::commands::p2p::SetEncryptionKey {
             encryption_key: configuration.encryption_key,
-        });
+        })?;
         // Set the encryption mode.
         self.client.send(&at::commands::p2p::SetEncryptionMode {
             encryption: configuration.encrypted,
-        });
+        })?;
+
+        Ok(())
     }
 
     // A function that reads the configuration.
-    pub fn read_configuration(&self) -> Result<Configuration, nb::Error<atat::Error>> {
+    pub fn read_configuration(&mut self) -> Result<Configuration, nb::Error<atat::Error>> {
         // Get the network working mode.
         let working_mode = self
             .client
@@ -204,14 +213,14 @@ where
         };
 
         // Return configuration
-        return Ok(configuration);
+        Ok(configuration)
     }
 
-    pub fn get_rssi(&self) -> i16 {
+    pub const fn get_rssi(&self) -> i16 {
         self.rssi
     }
 
-    pub fn get_snr(&self) -> i16 {
+    pub const fn get_snr(&self) -> i16 {
         self.snr
     }
 }

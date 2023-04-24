@@ -33,7 +33,7 @@ pub enum Bandwidth {
     LoRa31_25MHz,
     LoRa41_67MHz,
     LoRa62_5MHz,
-    FSK(u32),
+    Fsk(u32),
 }
 
 impl AtatLen for Bandwidth {
@@ -56,7 +56,7 @@ impl Serialize for Bandwidth {
             Self::LoRa31_25MHz => serializer.serialize_str("7"),
             Self::LoRa41_67MHz => serializer.serialize_str("8"),
             Self::LoRa62_5MHz => serializer.serialize_str("9"),
-            Self::FSK(bw) => serializer.serialize_str(alloc::format!("{bw}").as_str()),
+            Self::Fsk(bw) => serializer.serialize_str(alloc::format!("{bw}").as_str()),
         }
     }
 }
@@ -78,7 +78,7 @@ impl<'a> Deserialize<'a> for Bandwidth {
             "7" => Ok(Self::LoRa31_25MHz),
             "8" => Ok(Self::LoRa41_67MHz),
             "9" => Ok(Self::LoRa62_5MHz),
-            _ => Ok(Self::FSK(s.parse().unwrap())),
+            _ => Ok(Self::Fsk(s.parse().unwrap())),
         }
     }
 }
