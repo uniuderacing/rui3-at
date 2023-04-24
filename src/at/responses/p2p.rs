@@ -28,19 +28,19 @@ pub struct P2PBandwidth {
 #[derive(Clone, AtatResp)]
 pub struct P2PCodeRate {
     #[at_arg(position = 0)]
-    pub coderate: CodeRate,
+    pub code_rate: CodeRate,
 }
 
 #[derive(Clone, AtatResp)]
 pub struct P2PPreambleLength {
     #[at_arg(position = 0)]
-    pub preamblelength: u16,
+    pub preamble_length: u16,
 }
 
 #[derive(Clone, AtatResp)]
 pub struct P2PTxPower {
     #[at_arg(position = 0)]
-    pub txpower: u8,
+    pub tx_power: u8,
 }
 
 #[derive(Clone, AtatResp)]

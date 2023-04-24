@@ -152,7 +152,7 @@ pub struct GetP2PBandwidth {}
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PCR", NoResponse)]
 pub struct SetCodeRate {
-    pub coderate: CodeRate,
+    pub code_rate: CodeRate,
 }
 
 #[derive(Clone, AtatCmd)]
@@ -162,7 +162,7 @@ pub struct GetCodeRate {}
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PPL", NoResponse)]
 pub struct SetPreambleLength {
-    pub preamblelength: u16,
+    pub preamble_length: u16,
 }
 
 #[derive(Clone, AtatCmd)]
@@ -172,12 +172,12 @@ pub struct GetPreambleLength {}
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PTP", NoResponse)]
 pub struct SetTxPower {
-    pub txpower: u8,
+    pub tx_power: u8,
 }
 
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PTP=?", P2PTxPower)]
-pub struct GetPTxPower {}
+pub struct GetTxPower {}
 
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+PSEND", NoResponse)]
@@ -217,9 +217,9 @@ pub struct SetP2P {
     pub frequency: u32,
     pub spreading_factor: u8,
     pub bandwidth: Bandwidth,
-    pub coderate: CodeRate,
-    pub preamblelength: u16,
-    pub txpower: u8,
+    pub code_rate: CodeRate,
+    pub preamble_length: u16,
+    pub tx_power: u8,
 }
 
 #[derive(Clone, AtatCmd)]

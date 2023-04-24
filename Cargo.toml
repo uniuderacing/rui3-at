@@ -17,4 +17,7 @@ no-std = true
 
 [dependencies]
 atat = { version = "0.18.0" }
+nb = { version = "1.1.0" }
 text_io = { version = "0.1.12" }
+# hex = "0.4.3"
+

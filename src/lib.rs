@@ -13,6 +13,8 @@ where
     C: atat::AtatClient,
 {
     client: C,
+    rssi: i16,
+    snr: i16,
 }
 
 pub struct Configuration {
@@ -48,7 +50,11 @@ where
     C: atat::AtatClient,
 {
     pub fn new(client: C) -> Self {
-        Self { client }
+        Self {
+            client,
+            rssi: 0,
+            snr: 0,
+        }
     }
 
     pub fn send(&self, data: &[u8]) -> Result<(), atat::Error> {
@@ -61,38 +67,151 @@ where
 
         let send_command = at::commands::p2p::SendData { payload: data };
 
-        // TODO: Disable RX.
+        // Disable RX.
+        self.client
+            .send(&at::commands::p2p::ReceiveWindow::StopListening);
 
+        // Send data.
         self.client.send(&send_command)?;
 
-        // TODO: Re-enable RX.
+        // Re-enable RX.
+        // TODO: is this correct? Or is it blocking?
+        self.client
+            .send(&at::commands::p2p::ReceiveWindow::Continuous);
 
         Ok(())
     }
 
-    pub fn receive(
-        &self,
-    ) -> Result<alloc::vec::Vec<u8>, atat::Error> {
-        let receive_command = at::commands::p2p::ReceiveData { window: at::commands::p2p::ReceiveWindow::Continuous };
+    pub fn receive(&self) -> Result<alloc::vec::Vec<u8>, atat::Error> {
+        // Recieve is blocking until data is received.
+
+        let receive_command = at::commands::p2p::ReceiveData {
+            window: at::commands::p2p::ReceiveWindow::Continuous,
+        };
 
         // Enable RX.
+        self.client.send(&receive_command);
 
-        self.client.send(&receive_command)?;
+        loop {
+            // Check for URCs in loop.
+            let check_urc = self.client.check_urc::<at::urc::URCMessages>();
 
-        // Check for URCs in loop.
-        self.client.check_urc();
+            match check_urc {
+                Some(at::urc::URCMessages::PeerToPeerData(hex_data)) => {
+                    // let data = decode(hex_data).unwrap();
 
-        // Decode data from hex and concatenate responses in an array.
+                    // if hex_data.len() % 2 != 0 {
+                    //     Err
+                    // }
 
-        // Return as a vector of u8.
 
-        Ok()
+                    let hex_data = alloc::string::String::from_utf8(hex_data).unwrap();
+                    let mut data = alloc::vec::Vec::new();
+                    for i in (0..hex_data.len()).step_by(2) {
+                        let byte = u8::from_str_radix(&hex_data[i..i + 2], 16).unwrap();
+                        data.push(byte);
+                    }
+
+                    // Return as a vector of u8.
+                    return Ok(data);
+                }
+                Some(at::urc::URCMessages::PeerToPeerInfo { rssi, snr }) => {
+                    self.rssi = rssi;
+                    self.snr = snr;
+                }
+                None => {
+                    return Ok(alloc::vec![]);
+                }
+            }
+        }
     }
 
     pub fn configure(&self, configuration: Configuration) {
-
+        // Set the working mode.
+        self.client.send(&at::commands::p2p::SetNetworkWorkingMode {
+            mode: configuration.working_mode,
+        });
+        // Set the frequency.
+        self.client.send(&at::commands::p2p::SetP2PFrequency {
+            frequency: configuration.frequency,
+        });
+        // Set the spreading factor.
+        self.client.send(&at::commands::p2p::SetP2PSpreadingFactor {
+            spreading_factor: configuration.spreading_factor,
+        });
+        // Set the bandwidth.
+        self.client.send(&at::commands::p2p::SetP2PBandwidth {
+            bandwidth: configuration.bandwidth,
+        });
+        // Set the code rate.
+        self.client.send(&at::commands::p2p::SetCodeRate {
+            code_rate: configuration.code_rate,
+        });
+        // Set the preamble length.
+        self.client.send(&at::commands::p2p::SetPreambleLength {
+            preamble_length: configuration.preamble_length,
+        });
+        // Set the TX power.
+        self.client.send(&at::commands::p2p::SetTxPower {
+            tx_power: configuration.tx_power,
+        });
+        // Set the encryption key.
+        self.client.send(&at::commands::p2p::SetEncryptionKey {
+            encryption_key: configuration.encryption_key,
+        });
+        // Set the encryption mode.
+        self.client.send(&at::commands::p2p::SetEncryptionMode {
+            encryption: configuration.encrypted,
+        });
     }
 
     // A function that reads the configuration.
-    
+    pub fn read_configuration(&self) -> Result<Configuration, nb::Error<atat::Error>> {
+        // Get the network working mode.
+        let working_mode = self
+            .client
+            .send(&at::commands::p2p::GetNetworkWorkingMode {})?;
+
+        // Get the frequency.
+        let frequency = self.client.send(&at::commands::p2p::GetP2PFrequency {})?;
+        // Get the spreading factor.
+        let spreading_factor = self
+            .client
+            .send(&at::commands::p2p::GetP2PSpreadingFactor {})?;
+        // Get the bandwidth.
+        let bandwidth = self.client.send(&at::commands::p2p::GetP2PBandwidth {})?;
+        // Get the code rate.
+        let code_rate = self.client.send(&at::commands::p2p::GetCodeRate {})?;
+        // Get the preamble length.
+        let preamble_length = self.client.send(&at::commands::p2p::GetPreambleLength {})?;
+        // Get the TX power.
+        let tx_power = self.client.send(&at::commands::p2p::GetTxPower {})?;
+        // Get the encryption key.
+        let encryption_key = self.client.send(&at::commands::p2p::GetEncryptionKey {})?;
+        // Get the encryption mode.
+        let encryption_mode = self.client.send(&at::commands::p2p::GetEncryptionMode {})?;
+
+        let configuration = Configuration {
+            working_mode: working_mode.mode,
+            frequency: frequency.frequency,
+            spreading_factor: spreading_factor.spreading_factor,
+            bandwidth: bandwidth.bandwidth,
+            code_rate: code_rate.code_rate,
+            preamble_length: preamble_length.preamble_length,
+            tx_power: tx_power.tx_power,
+            encrypted: encryption_mode.encryption,
+            encryption_key: encryption_key.encryption_key,
+        };
+
+        // Return configuration
+        return Ok(configuration);
+    }
+
+    pub fn get_rssi(&self) -> i16 {
+        self.rssi
+    }
+
+    pub fn get_snr(&self) -> i16 {
+        self.snr
+    }
 }
