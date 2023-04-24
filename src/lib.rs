@@ -2,6 +2,7 @@
 #![warn(clippy::nursery)]
 #![warn(clippy::cargo)]
 #![warn(rustdoc::all)]
+#![warn(missing_docs)]
 #![no_std]
 
 extern crate alloc;
