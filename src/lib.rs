@@ -6,6 +6,22 @@
 //! - Set and read radio configuration.
 //!
 //! [RUI 3]: https://docs.rakwireless.com/RUI3/
+//! 
+//! # Usage
+//! 
+//! ```toml
+//! [dependencies]
+//! rui3_radio = "0.1.0"
+//! ```
+//! 
+//! # Examples
+//! 
+//! ```rust
+//! use rui3_radio::Rui3Radio;
+//! use atat::ClientBuilder;
+//! 
+//! 
+//! ```
 
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
@@ -237,13 +253,13 @@ where
     /// TODO
     pub fn receive_explicit(
         &mut self,
-        receiving_window: at::commands::p2p::ReceiveWindow,
+        receiving_window: &at::commands::p2p::ReceiveWindow,
     ) -> Result<alloc::vec::Vec<u8>, nb::Error<atat::Error>> {
         match receiving_window {
             at::commands::p2p::ReceiveWindow::Milliseconds(millis) => {
                 // Enable RX
                 self.client.send(&at::commands::p2p::ReceiveData {
-                    window: at::commands::p2p::ReceiveWindow::Milliseconds(millis),
+                    window: at::commands::p2p::ReceiveWindow::Milliseconds(*millis),
                 })?;
 
                 // TODO: find how to wait for a certain amount of time.
@@ -300,6 +316,58 @@ where
         }
     }
 
+    #[allow(missing_doc_code_examples)]
+    #[allow(clippy::missing_errors_doc)]
+    /// Sets the receiving window.
+    pub fn set_receiving_window(
+        &mut self,
+        receiving_window: at::commands::p2p::ReceiveWindow,
+    ) -> Result<(), nb::Error<atat::Error>> {
+        self.client.send(&at::commands::p2p::ReceiveData {
+            window: receiving_window,
+        })?;
+        Ok(())
+    }
+
+    #[allow(missing_doc_code_examples)]
+    #[allow(clippy::missing_errors_doc)]
+    #[allow(clippy::missing_panics_doc)]
+    /// URC polling function, returns data as a vec u8.
+    /// 
+    /// This function is usually only called through the [`receive`] function. 
+    /// 
+    /// [`receive`]: #method.receive
+    pub fn poll(&mut self) -> Result<alloc::vec::Vec<u8>, nb::Error<atat::Error>> {
+        // Check for URCs in loop.
+        let check_urc = self.client.check_urc::<at::urc::URCMessages>();
+
+        match check_urc {
+            Some(at::urc::URCMessages::PeerToPeerData(hex_data)) => {
+                // let data = decode(hex_data).unwrap();
+
+                // if hex_data.len() % 2 != 0 {
+                //     Err
+                // }
+
+                let hex_data = alloc::string::String::from_utf8(hex_data).unwrap();
+                let mut data = alloc::vec::Vec::new();
+                for i in (0..hex_data.len()).step_by(2) {
+                    let byte = u8::from_str_radix(&hex_data[i..i + 2], 16).unwrap();
+                    data.push(byte);
+                }
+
+                Ok(data)
+            }
+            Some(at::urc::URCMessages::PeerToPeerInfo { rssi, snr }) => {
+                self.rssi = rssi;
+                self.snr = snr;
+                Ok(alloc::vec![])
+            }
+            None => {
+                Ok(alloc::vec![])
+            }
+        }
+    }
 
     #[allow(missing_doc_code_examples)]
     #[allow(clippy::missing_errors_doc)]
