@@ -1,14 +1,24 @@
+//! A library to send and receive data via [RUI 3] radio modules.
+//!
+//! It implements functions such as:
+//! - Send and receive data.
+//! - Send and receive AT commands.
+//! - Set and read radio configuration.
+//!
+//! [RUI 3]: https://docs.rakwireless.com/RUI3/
+
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::cargo)]
 #![warn(rustdoc::all)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 #![no_std]
 
 extern crate alloc;
 
 mod at;
 
+/// A struct to define the radio client.
 pub struct Rui3Radio<C>
 where
     C: atat::AtatClient,
@@ -18,6 +28,7 @@ where
     snr: i16,
 }
 
+/// A struct to define the radio configuration.
 pub struct Configuration {
     pub working_mode: at::commands::p2p::WorkingMode,
     pub frequency: u32,
@@ -30,6 +41,7 @@ pub struct Configuration {
     pub encryption_key: atat::heapless::String<16>,
 }
 
+/// Default trait implementation for Configuration.
 impl Default for Configuration {
     fn default() -> Self {
         Self {
@@ -129,6 +141,71 @@ where
         }
     }
 
+    pub fn receive_explicit(
+        &mut self,
+        receiving_window: at::commands::p2p::ReceiveWindow,
+    ) -> Result<alloc::vec::Vec<u8>, nb::Error<atat::Error>> {
+        match receiving_window {
+            at::commands::p2p::ReceiveWindow::Milliseconds(millis) => {
+                // Enable RX
+                self.client.send(&at::commands::p2p::ReceiveData {
+                    window: at::commands::p2p::ReceiveWindow::Milliseconds(millis),
+                })?;
+
+                // TODO: find how to wait for a certain amount of time.
+
+                let data: alloc::vec::Vec<u8> = alloc::vec![];
+                Ok(data)
+            }
+            at::commands::p2p::ReceiveWindow::OnePacket => {
+                // Enable RX
+                self.client.send(&at::commands::p2p::ReceiveData {
+                    window: at::commands::p2p::ReceiveWindow::OnePacket,
+                })?;
+
+                loop {
+                    // Check for URCs in loop.
+                    let check_urc = self.client.check_urc::<at::urc::URCMessages>();
+
+                    match check_urc {
+                        Some(at::urc::URCMessages::PeerToPeerData(hex_data)) => {
+                            // let data = decode(hex_data).unwrap();
+
+                            // if hex_data.len() % 2 != 0 {
+                            //     Err
+                            // }
+
+                            let hex_data = alloc::string::String::from_utf8(hex_data).unwrap();
+                            let mut data = alloc::vec::Vec::new();
+                            for i in (0..hex_data.len()).step_by(2) {
+                                let byte = u8::from_str_radix(&hex_data[i..i + 2], 16).unwrap();
+                                data.push(byte);
+                            }
+
+                            // Return as a vector of u8.
+                            return Ok(data);
+                        }
+                        Some(at::urc::URCMessages::PeerToPeerInfo { rssi, snr }) => {
+                            self.rssi = rssi;
+                            self.snr = snr;
+                        }
+                        None => {
+                            continue;
+                        }
+                    }
+                }
+            }
+            at::commands::p2p::ReceiveWindow::Continuous => self.receive(),
+            at::commands::p2p::ReceiveWindow::StopListening => {
+                // Disable RX
+                self.client.send(&at::commands::p2p::ReceiveData {
+                    window: at::commands::p2p::ReceiveWindow::StopListening,
+                })?;
+                Ok(alloc::vec![])
+            }
+        }
+    }
+
     pub fn configure(
         &mut self,
         configuration: Configuration,
@@ -175,7 +252,6 @@ where
         Ok(())
     }
 
-    // A function that reads the configuration.
     pub fn read_configuration(&mut self) -> Result<Configuration, nb::Error<atat::Error>> {
         // Get the network working mode.
         let working_mode = self
