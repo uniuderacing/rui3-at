@@ -1,35 +1,72 @@
+use std::io;
 use std::io::BufRead;
+use std::time::Duration;
 use atat::atat_derive::{AtatCmd, AtatResp};
+use atat::AtDigester;
+use atat::bbqueue::BBBuffer;
+use serialport::*;
 
 // static mut INGRESS: Option<atat::IngressManager> = None;
 // static mut RX: Option<Rx<USART2>> = None;
+//static mut INGRESS: Option<atat::IngressManager> = None;
+//static mut RX: Option<Rx<USART2>> = None;
 
+// Chunk size in bytes when sending data. Higher value results in better
+// performance, but introduces also higher stack memory footprint. Max value: 8192.
+const TX_SIZE: usize = 1024;
+// Chunk size in bytes when receiving data. Value should be matched to buffer
+// size of receive() calls.
+const RX_SIZE: usize = 2048;
 
-#[derive(Clone, AtatResp)]
-pub struct NoResponse;
+// Constants derived from TX_SIZE and RX_SIZE
+const ESP_TX_SIZE: usize = TX_SIZE;
+const ESP_RX_SIZE: usize = RX_SIZE;
+const ATAT_RX_SIZE: usize = RX_SIZE;
+const URC_RX_SIZE: usize = RX_SIZE;
+const RES_CAPACITY: usize = RX_SIZE;
+const URC_CAPACITY: usize = RX_SIZE * 3;
 
-#[derive(Clone, AtatCmd)]
-#[at_cmd("", NoResponse, timeout_ms = 1000)]
-pub struct AT;
-
-
+// Timer frequency in Hz
+const TIMER_HZ: u32 = 1000;
 
 
 fn main() {
     
     let mut serial_ports = serialport::available_ports().unwrap();
-    let serial_port = serialport::new(serial_ports.pop().unwrap().port_name, 115_200)
-        .timeout(std::time::Duration::from_millis(500))
-        .open_native()
-        .unwrap();
+    let serial_tx = serialport::new(serial_ports.pop().unwrap().port_name, 115_200)
+        .data_bits(DataBits::Eight)
+        .flow_control(FlowControl::None)
+        .parity(Parity::None)
+        .stop_bits(StopBits::One)
+        .timeout(Duration::from_millis(500))
+        .open()
+        .expect("Could not open serial port");
 
-    let (mut tx, mut rx) = serial_port.split();
-    
-    let timer = timer::SysTimer::new();
-    let digester = atat::AtDigester::<URCMessages<>>::new();
+    let mut serial_rx = serial_tx.try_clone().expect("Could not clone serial port");
+
+    static mut RES_QUEUE: BBBuffer<RES_CAPACITY> = BBBuffer::new();
+    static mut URC_QUEUE: BBBuffer<URC_CAPACITY> = BBBuffer::new();
+    let queues = atat::Queues {
+        res_queue: unsafe { RES_QUEUE.try_split_framed().unwrap() },
+        urc_queue: unsafe { URC_QUEUE.try_split_framed().unwrap() },
+    };
+
+    // Two timer instances
+    let atat_timer = timer::SysTimer::new();
+    let esp_timer = timer::SysTimer::new();
+
+    // Atat client
     let config = atat::Config::new(atat::Mode::Timeout);
+    let digester: AtDigester<> = atat::AtDigester::new();
+    let (client, mut ingress) =
+        atat::ClientBuilder::<_, _, _, TIMER_HZ, ATAT_RX_SIZE, RES_CAPACITY, URC_CAPACITY>::new(
+            serial_tx, atat_timer, digester, config,
+        )
+            .build(queues);
 
-    let mut at_client = atat::ClientBuilder::new(tx, timer, digester, config);
+    // Flush serial RX buffer, to ensure that there isn't any remaining left
+    // form previous sessions.
+    flush_serial(&mut serial_rx);
 
 }
 
@@ -103,24 +140,20 @@ mod timer {
             }
         }
     }
+}
 
-    #[cfg(test)]
-    mod tests {
-        use super::*;
 
-        #[test]
-        fn test_delay() {
-            let mut timer = SysTimer::new();
-
-            // Wait 500 ms
-            let before = StdInstant::now();
-            timer.start(fugit::Duration::<u32, 1, 1000>::from_ticks(500)).unwrap();
-            nb::block!(timer.wait()).unwrap();
-            let after = StdInstant::now();
-
-            let duration_ms = (after - before).as_millis();
-            assert!(duration_ms >= 500);
-            assert!(duration_ms < 1000);
+fn flush_serial(serial_rx: &mut Box<dyn SerialPort>) {
+    let mut buf = [0; 32];
+    loop {
+        match serial_rx.read(&mut buf[..]) {
+            Ok(0) => break,
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut => break,
+            Ok(_) => continue,
+            Err(e) => panic!("Error while flushing serial: {}", e),
         }
     }
 }
+
+
+

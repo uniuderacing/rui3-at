@@ -19,7 +19,7 @@ no-std = true
 atat = { version = "0.18.0" }
 nb = { version = "1.1.0" }
 text_io = { version = "0.1.12" }
-serialport = { version = "4.2.0" }
+fugit = "0.3.6"
 # hex = "0.4.3"
 
 [dev-dependencies]
