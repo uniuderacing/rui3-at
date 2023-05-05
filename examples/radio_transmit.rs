@@ -33,8 +33,6 @@ const URC_CAPACITY: usize = RX_SIZE * 3;
 const TIMER_HZ: u32 = 1000;
 
 fn main() {
-    env_logger::init();
-
     // Parse args
     let args: Vec<String> = env::args().collect();
     if args.len() != 5 {
@@ -76,7 +74,7 @@ fn main() {
 
     // Atat client
     let config = atat::Config::new(atat::Mode::Timeout);
-    let digester = atat::AtDigester::<URCMessages<URC_RX_SIZE>>::new();
+    let digester = atat::AtDigester::<URCMessages>::new();
     let (client, mut ingress) =
         atat::ClientBuilder::<_, _, _, TIMER_HZ, ATAT_RX_SIZE, RES_CAPACITY, URC_CAPACITY>::new(
             serial_tx, atat_timer, digester, config,
@@ -104,72 +102,14 @@ fn main() {
                         // Ignore
                     }
                     _ => {
-                        log::error!("Serial reading thread error while reading: {}", e);
+                        println!("Serial reading thread error while reading: {}", e);
                     }
                 },
             }
         })
         .unwrap();
 
-    // ESP AT adapter
-    let mut adapter: Adapter<_, _, TIMER_HZ, ESP_TX_SIZE, ESP_RX_SIZE> = Adapter::new(client, esp_timer);
 
-    // Join WIFI access point
-    println!("Join WiFi \"{}\"...", ssid);
-    let state = adapter.join(ssid, psk).unwrap();
-    assert!(state.connected);
-
-    // Resolve IPv4 for ifconfig.net
-    let remote_host = "ifconfig.net";
-    let ipv4_and_port = (remote_host, 80)
-        .to_socket_addrs()
-        .unwrap()
-        .find_map(|addr| match addr {
-            StdSocketAddr::V4(v4) => Some((v4.ip().octets(), v4.port())),
-            _ => None,
-        })
-        .unwrap();
-    let socket_addr = NalSocketAddr::from(ipv4_and_port);
-
-    // Create TCP connection
-    let mut socket = adapter.socket().expect("Failed to create socket");
-    println!("Connecting to {}...", remote_host);
-    adapter
-        .connect(&mut socket, socket_addr)
-        .unwrap_or_else(|_| panic!("Failed to connect to {}", remote_host));
-    println!("Connected!");
-
-    // Send HTTP request
-    println!("Sending HTTP request...");
-    let request = b"GET / HTTP/1.1\r\nAccept: text/plain\r\nHost: ifconfig.net\r\n\r\n";
-    adapter.send(&mut socket, request).expect("Could not send HTTP request");
-
-    // Read response
-    let mut rx_buf = [0; RX_SIZE];
-    let bytes_read = nb::block!(adapter.receive(&mut socket, &mut rx_buf)).expect("Error while receiving data");
-    println!("Read {} bytes", bytes_read);
-    assert!(bytes_read < rx_buf.len(), "HTTP response did not fit in rx_buffer");
-    let response = std::str::from_utf8(&rx_buf[..bytes_read]).expect("HTTP response is not valid UTF8");
-
-    // Very primitive HTTP response parsing
-    let (headers, body) = response.split_once("\r\n\r\n").unwrap_or_else(|| {
-        println!("Response:\n---\n{}\n---", re 
-
-        fn main(){
-        
-        }sponse);
-        panic!("Could not parse HTTP response");
-    });
-    if !headers.starts_with("HTTP/1.1 ") {
-        panic!(
-            "Unsupported HTTP response, expected HTTP/1.1 but found {}",
-            &headers[..8]
-        );
-    }
-    if !headers.starts_with("HTTP/1.1 200 ") {
-        panic!("Bad HTTP response code, expected 200 but found {}", &headers[9..12]);
-    }
-    println!("Your public IP, as returned by {}: {}", remote_host, body.trim());
 }
 
 /// Flush the serial port receive buffer.
@@ -276,3 +216,5 @@ mod timer {
         }
     }
 }
+
+
