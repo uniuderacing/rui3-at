@@ -3,12 +3,12 @@ use alloc::vec::Vec;
 use atat::AtatUrc;
 use text_io::scan;
 
-pub enum URCMessages {
+pub enum URCMessages<const RX_SIZE: usize>  {
     PeerToPeerData(Vec<u8>),
     PeerToPeerInfo { rssi: i16, snr: i16 },
 }
 
-impl AtatUrc for URCMessages {
+impl<const RX_SIZE: usize> AtatUrc for URCMessages<RX_SIZE> {
     type Response = Self;
 
     fn parse(resp: &[u8]) -> Option<Self::Response> {
