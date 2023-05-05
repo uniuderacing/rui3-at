@@ -43,3 +43,9 @@ impl AtatUrc for URCMessages{
         None
     }
 }
+
+impl Parser for URCMessages {
+    fn parse(buf: &[u8]) -> &[u8] {
+        buf
+    }
+}
