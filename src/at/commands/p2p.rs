@@ -102,9 +102,9 @@ impl Serialize for ReceiveWindow {
     {
         match self {
             Self::Milliseconds(ms) => serializer.serialize_str(alloc::format!("{ms}").as_str()),
-            Self::OnePacket => serializer.serialize_str("65535"),
-            Self::Continuous => serializer.serialize_str("65534"),
-            Self::StopListening => serializer.serialize_str("0"),
+            Self::OnePacket => serializer.serialize_i32(65535),
+            Self::Continuous => serializer.serialize_i32(65534),
+            Self::StopListening => serializer.serialize_i16(0),
         }
     }
 }
