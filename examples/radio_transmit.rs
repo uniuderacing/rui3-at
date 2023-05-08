@@ -75,12 +75,34 @@ fn main() {
             match serial_rx.read(&mut buffer[..]) {
                 Ok(0) => {}
                 Ok(bytes_read) => {
-                    let swapped_buffer = String::from_utf8(buffer[0..bytes_read].to_vec()).unwrap().replace("\n\r", "\r\n");
+                    let mut chunks: Vec<String> = vec![];
+                    let mut index = 0;
+                    loop {
+                        if (buffer[index] == b'\n' && buffer[index + 1] == b'\r') || (buffer[index] == b'\r' && buffer[index + 1] == b'\n') {
+                            chunks.push("\r\n".to_owned());
+                            index += 2;
+                        } else {
+                            chunks.push(buffer[index].to_string());
+                            index += 1;
+                        }
+
+                        if index + 1 == bytes_read {
+                            break;
+                        }
+                    }
+
+                    let swapped_buffer = chunks.iter().fold(String::new(), |mut acc, x| {
+                        acc.push_str(x);
+                        acc
+                    });
+
                     ingress.write(&swapped_buffer.as_bytes()[0..bytes_read]);
                     ingress.digest();
                 }
                 Err(e) => match e.kind() {
-                    io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut | io::ErrorKind::Interrupted => {
+                    io::ErrorKind::WouldBlock
+                    | io::ErrorKind::TimedOut
+                    | io::ErrorKind::Interrupted => {
                         // Ignore
                     }
                     _ => {
