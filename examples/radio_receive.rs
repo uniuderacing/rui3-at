@@ -1,10 +1,10 @@
+use atat::atat_derive::{AtatCmd, AtatResp};
+use atat::bbqueue::BBBuffer;
+use atat::AtDigester;
+use serialport::*;
 use std::io;
 use std::io::BufRead;
 use std::time::Duration;
-use atat::atat_derive::{AtatCmd, AtatResp};
-use atat::AtDigester;
-use atat::bbqueue::BBBuffer;
-use serialport::*;
 
 // static mut INGRESS: Option<atat::IngressManager> = None;
 // static mut RX: Option<Rx<USART2>> = None;
@@ -29,9 +29,7 @@ const URC_CAPACITY: usize = RX_SIZE * 3;
 // Timer frequency in Hz
 const TIMER_HZ: u32 = 1000;
 
-
 fn main() {
-    
     let mut serial_ports = serialport::available_ports().unwrap();
     let serial_tx = serialport::new(serial_ports.pop().unwrap().port_name, 115_200)
         .data_bits(DataBits::Eight)
@@ -57,17 +55,16 @@ fn main() {
 
     // Atat client
     let config = atat::Config::new(atat::Mode::Timeout);
-    let digester: AtDigester<> = atat::AtDigester::new();
+    let digester: AtDigester = atat::AtDigester::new();
     let (client, mut ingress) =
         atat::ClientBuilder::<_, _, _, TIMER_HZ, ATAT_RX_SIZE, RES_CAPACITY, URC_CAPACITY>::new(
             serial_tx, atat_timer, digester, config,
         )
-            .build(queues);
+        .build(queues);
 
     // Flush serial RX buffer, to ensure that there isn't any remaining left
     // form previous sessions.
     flush_serial(&mut serial_rx);
-
 }
 
 mod timer {
@@ -142,18 +139,18 @@ mod timer {
     }
 }
 
-
 fn flush_serial(serial_rx: &mut Box<dyn SerialPort>) {
     let mut buf = [0; 32];
     loop {
         match serial_rx.read(&mut buf[..]) {
             Ok(0) => break,
-            Err(e) if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut => break,
+            Err(e)
+                if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut =>
+            {
+                break
+            }
             Ok(_) => continue,
             Err(e) => panic!("Error while flushing serial: {}", e),
         }
     }
 }
-
-
-

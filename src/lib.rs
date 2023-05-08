@@ -6,33 +6,33 @@
 //! - Set and read radio configuration.
 //!
 //! [RUI 3]: https://docs.rakwireless.com/RUI3/
-//! 
+//!
 //! # Usage
-//! 
+//!
 //! ```toml
 //! [dependencies]
 //! rui3_radio = "0.1.0"
 //! ```
-//! 
+//!
 //! # Examples
-//! 
+//!
 //! ```rust
 //! use rui3_radio::Rui3Radio;
 //! use atat::ClientBuilder;
-//! 
-//! 
+//!
+//!
 //! ```
 
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![warn(clippy::cargo)]
 #![warn(rustdoc::all)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 #![no_std]
 
 extern crate alloc;
 
-mod at;
+pub mod at;
 
 /// A struct to define the radio client.
 pub struct Rui3Radio<C>
@@ -71,7 +71,7 @@ impl Default for Configuration {
     fn default() -> Self {
         Self {
             working_mode: at::commands::p2p::WorkingMode::LoRaP2P,
-            frequency: 868_000_000,
+            frequency: 433_000_000,
             spreading_factor: 7,
             bandwidth: at::commands::p2p::Bandwidth::LoRa125KHz,
             code_rate: at::commands::p2p::CodeRate::PCR4_5,
@@ -333,9 +333,9 @@ where
     #[allow(clippy::missing_errors_doc)]
     #[allow(clippy::missing_panics_doc)]
     /// URC polling function, returns data as a vec u8.
-    /// 
-    /// This function is usually only called through the [`receive`] function. 
-    /// 
+    ///
+    /// This function is usually only called through the [`receive`] function.
+    ///
     /// [`receive`]: #method.receive
     pub fn poll(&mut self) -> Result<alloc::vec::Vec<u8>, nb::Error<atat::Error>> {
         // Check for URCs in loop.
@@ -363,9 +363,7 @@ where
                 self.snr = snr;
                 Ok(alloc::vec![])
             }
-            None => {
-                Ok(alloc::vec![])
-            }
+            None => Ok(alloc::vec![]),
         }
     }
 
@@ -378,15 +376,15 @@ where
         &mut self,
         configuration: Configuration,
     ) -> Result<(), nb::Error<atat::Error>> {
-        // Set the working mode.
-        self.client
-            .send(&at::commands::p2p::SetNetworkWorkingMode {
-                mode: configuration.working_mode,
-            })?;
         // Set the frequency.
         self.client.send(&at::commands::p2p::SetP2PFrequency {
             frequency: configuration.frequency,
         })?;
+        // Set the working mode.
+        self.client.send(&at::commands::p2p::SetNetworkWorkingMode {
+                mode: configuration.working_mode,
+            })?;
+        
         // Set the spreading factor.
         self.client
             .send(&at::commands::p2p::SetP2PSpreadingFactor {
@@ -419,7 +417,6 @@ where
 
         Ok(())
     }
-
 
     #[allow(missing_doc_code_examples)]
     #[allow(clippy::missing_errors_doc)]
@@ -560,8 +557,9 @@ where
     #[allow(missing_doc_code_examples)]
     #[allow(clippy::missing_errors_doc)]
     /// Gets the bandwidth.
-    pub fn get_bandwidth(&mut self) -> Result<at::commands::p2p::Bandwidth, nb::Error<atat::Error>>
-    {
+    pub fn get_bandwidth(
+        &mut self,
+    ) -> Result<at::commands::p2p::Bandwidth, nb::Error<atat::Error>> {
         // Get the bandwidth.
         let bandwidth = self.client.send(&at::commands::p2p::GetP2PBandwidth {})?;
         Ok(bandwidth.bandwidth)
@@ -575,15 +573,15 @@ where
         code_rate: at::commands::p2p::CodeRate,
     ) -> Result<(), nb::Error<atat::Error>> {
         // Set the code rate.
-        self.client.send(&at::commands::p2p::SetCodeRate { code_rate })?;
+        self.client
+            .send(&at::commands::p2p::SetCodeRate { code_rate })?;
         Ok(())
     }
 
     #[allow(missing_doc_code_examples)]
     #[allow(clippy::missing_errors_doc)]
     /// Gets the code rate.
-    pub fn get_code_rate(&mut self) -> Result<at::commands::p2p::CodeRate, nb::Error<atat::Error>>
-    {
+    pub fn get_code_rate(&mut self) -> Result<at::commands::p2p::CodeRate, nb::Error<atat::Error>> {
         // Get the code rate.
         let code_rate = self.client.send(&at::commands::p2p::GetCodeRate {})?;
         Ok(code_rate.code_rate)
@@ -607,9 +605,7 @@ where
     /// Gets the preamble length.
     pub fn get_preamble_length(&mut self) -> Result<u16, nb::Error<atat::Error>> {
         // Get the preamble length.
-        let preamble_length = self
-            .client
-            .send(&at::commands::p2p::GetPreambleLength {})?;
+        let preamble_length = self.client.send(&at::commands::p2p::GetPreambleLength {})?;
         Ok(preamble_length.preamble_length)
     }
 
@@ -618,7 +614,8 @@ where
     /// Sets tx power.
     pub fn set_tx_power(&mut self, tx_power: u8) -> Result<(), nb::Error<atat::Error>> {
         // Set tx power.
-        self.client.send(&at::commands::p2p::SetTxPower { tx_power })?;
+        self.client
+            .send(&at::commands::p2p::SetTxPower { tx_power })?;
         Ok(())
     }
 
@@ -630,17 +627,14 @@ where
         let tx_power = self.client.send(&at::commands::p2p::GetTxPower {})?;
         Ok(tx_power.tx_power)
     }
-    
+
     #[allow(missing_doc_code_examples)]
     #[allow(clippy::missing_errors_doc)]
     /// Sets the encryption mode.
-    pub fn set_encryption_mode(
-        &mut self,
-        encryption: bool,
-    ) -> Result<(), nb::Error<atat::Error>> {
+    pub fn set_encryption_mode(&mut self, encryption: bool) -> Result<(), nb::Error<atat::Error>> {
         // Set the encryption mode.
         self.client
-            .send(&at::commands::p2p::SetEncryptionMode { encryption  })?;
+            .send(&at::commands::p2p::SetEncryptionMode { encryption })?;
         Ok(())
     }
 
@@ -649,9 +643,7 @@ where
     /// Gets the encryption mode.
     pub fn get_encryption_mode(&mut self) -> Result<bool, nb::Error<atat::Error>> {
         // Get the encryption mode.
-        let encryption = self
-            .client
-            .send(&at::commands::p2p::GetEncryptionMode {})?;
+        let encryption = self.client.send(&at::commands::p2p::GetEncryptionMode {})?;
         Ok(encryption.encryption)
     }
 
@@ -675,9 +667,7 @@ where
         &mut self,
     ) -> Result<atat::heapless::String<16>, nb::Error<atat::Error>> {
         // Get the encryption key.
-        let encryption_key = self
-            .client
-            .send(&at::commands::p2p::GetEncryptionKey {})?;
+        let encryption_key = self.client.send(&at::commands::p2p::GetEncryptionKey {})?;
         Ok(encryption_key.encryption_key)
     }
 }

@@ -1,31 +1,20 @@
 //! Example that runs on Linux using a serial-USB-adapter.
-use std::{
-    env, io,
-    net::{SocketAddr as StdSocketAddr, ToSocketAddrs},
-    thread,
-    time::Duration,
-};
+use std::{io, thread, time::Duration};
 
 use atat::bbqueue::BBBuffer;
-use embedded_nal::{SocketAddr as NalSocketAddr, TcpClientStack};
-use esp_at_nal::{
-    urc::URCMessages,
-    wifi::{Adapter, WifiAdapter},
-};
+use rui3_at::Configuration;
 use serialport::{DataBits, FlowControl, Parity, SerialPort, StopBits};
 
 // Chunk size in bytes when sending data. Higher value results in better
 // performance, but introduces also higher stack memory footprint. Max value: 8192.
-const TX_SIZE: usize = 1024;
+// const TX_SIZE: usize = 1024;
 // Chunk size in bytes when receiving data. Value should be matched to buffer
 // size of receive() calls.
 const RX_SIZE: usize = 2048;
 
 // Constants derived from TX_SIZE and RX_SIZE
-const ESP_TX_SIZE: usize = TX_SIZE;
-const ESP_RX_SIZE: usize = RX_SIZE;
 const ATAT_RX_SIZE: usize = RX_SIZE;
-const URC_RX_SIZE: usize = RX_SIZE;
+// const URC_RX_SIZE: usize = RX_SIZE;
 const RES_CAPACITY: usize = RX_SIZE;
 const URC_CAPACITY: usize = RX_SIZE * 3;
 
@@ -33,29 +22,20 @@ const URC_CAPACITY: usize = RX_SIZE * 3;
 const TIMER_HZ: u32 = 1000;
 
 fn main() {
-    // Parse args
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 5 {
-        println!("Usage: {} <path-to-serial> <baudrate> <ssid> <psk>", args[0]);
-        println!("Example: {} /dev/ttyUSB0 115200 mywifi hellopasswd123", args[0]);
-        println!("\nNote: To run the example with debug logging, run it like this:");
-        println!("\n  RUST_LOG=trace cargo run --example linux --features \"atat/log\" -- /dev/ttyUSB0 115200 mywifi hellopasswd123");
-        std::process::exit(1);
+    // TODO: Add support for command line arguments
+    // Print available ports
+    let ports = serialport::available_ports().expect("No serial ports found!");
+    for p in ports {
+        println!("{}", p.port_name);
     }
-    let dev = &args[1];
-    let baud_rate: u32 = args[2].parse().unwrap();
-    let ssid = &args[3];
-    let psk = &args[4];
-
-    println!("Starting (dev={}, baud={:?})...", dev, baud_rate);
 
     // Open serial port
-    let serial_tx = serialport::new(dev, baud_rate)
+    let mut serial_tx = serialport::new("/dev/ttyUSB0", 115200)
         .data_bits(DataBits::Eight)
         .flow_control(FlowControl::None)
         .parity(Parity::None)
         .stop_bits(StopBits::One)
-        .timeout(Duration::from_millis(500))
+        .timeout(Duration::from_millis(50000))
         .open()
         .expect("Could not open serial port");
     let mut serial_rx = serial_tx.try_clone().expect("Could not clone serial port");
@@ -70,21 +50,23 @@ fn main() {
 
     // Two timer instances
     let atat_timer = timer::SysTimer::new();
-    let esp_timer = timer::SysTimer::new();
 
     // Atat client
-    let config = atat::Config::new(atat::Mode::Timeout);
-    let digester = atat::AtDigester::<URCMessages>::new();
+    let config = atat::Config::new(atat::Mode::Blocking);
+    let digester = atat::AtDigester::<rui3_at::at::urc::URCMessages>::new();
     let (client, mut ingress) =
         atat::ClientBuilder::<_, _, _, TIMER_HZ, ATAT_RX_SIZE, RES_CAPACITY, URC_CAPACITY>::new(
             serial_tx, atat_timer, digester, config,
         )
         .build(queues);
+    println!("Atat client created");
 
     // Flush serial RX buffer, to ensure that there isn't any remaining left
     // form previous sessions.
-    flush_serial(&mut serial_rx);
 
+    // flush_serial(&mut serial_rx);
+
+    // TODO: Add thread for serial reading
     // Launch reading thread, to pass incoming data from serial to the atat ingress
     thread::Builder::new()
         .name("serial_read".to_string())
@@ -106,10 +88,39 @@ fn main() {
                     }
                 },
             }
+
+            std::thread::sleep(Duration::from_millis(10));
         })
         .unwrap();
 
+    // Radio data transmission thread
+    thread::spawn(move || {
+        // Create Rui3Radio instance
+        let mut radio = rui3_at::Rui3Radio::new(client);
+        println!("Radio created");
 
+        // Configure radio
+        let configuration = radio.configure(Configuration::default());
+        println!("Radio configured");
+        match configuration {
+            Ok(_) => println!("Configuration successful"),
+            Err(e) => println!("Configuration failed: {:?}", e),
+        }
+
+        // Send data
+        loop {
+            let data_sent = radio.send(&[88]);
+            match data_sent {
+                Ok(_) => println!("Data sent"),
+                Err(e) => println!("Data not sent: {:?}", e),
+            }
+            thread::sleep(Duration::from_millis(1000));
+        }
+    });
+
+    loop {
+        thread::sleep(Duration::from_millis(200));
+    }
 }
 
 /// Flush the serial port receive buffer.
@@ -118,7 +129,11 @@ fn flush_serial(serial_rx: &mut Box<dyn SerialPort>) {
     loop {
         match serial_rx.read(&mut buf[..]) {
             Ok(0) => break,
-            Err(e) if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut => break,
+            Err(e)
+                if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut =>
+            {
+                break
+            }
             Ok(_) => continue,
             Err(e) => panic!("Error while flushing serial: {}", e),
         }
@@ -206,7 +221,9 @@ mod timer {
 
             // Wait 500 ms
             let before = StdInstant::now();
-            timer.start(fugit::Duration::<u32, 1, 1000>::from_ticks(500)).unwrap();
+            timer
+                .start(fugit::Duration::<u32, 1, 1000>::from_ticks(500))
+                .unwrap();
             nb::block!(timer.wait()).unwrap();
             let after = StdInstant::now();
 
@@ -216,5 +233,3 @@ mod timer {
         }
     }
 }
-
-

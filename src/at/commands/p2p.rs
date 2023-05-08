@@ -46,16 +46,16 @@ impl Serialize for Bandwidth {
         S: atat::serde_at::serde::Serializer,
     {
         match self {
-            Self::LoRa125KHz => serializer.serialize_str("0"),
-            Self::LoRa250KHz => serializer.serialize_str("1"),
-            Self::LoRa500KHz => serializer.serialize_str("2"),
-            Self::LoRa7_8MHz => serializer.serialize_str("3"),
-            Self::LoRa10_4MHz => serializer.serialize_str("4"),
-            Self::LoRa15_63MHz => serializer.serialize_str("5"),
-            Self::LoRa20_83MHz => serializer.serialize_str("6"),
-            Self::LoRa31_25MHz => serializer.serialize_str("7"),
-            Self::LoRa41_67MHz => serializer.serialize_str("8"),
-            Self::LoRa62_5MHz => serializer.serialize_str("9"),
+            Self::LoRa125KHz => serializer.serialize_i8(0),
+            Self::LoRa250KHz => serializer.serialize_i8(1),
+            Self::LoRa500KHz => serializer.serialize_i8(2),
+            Self::LoRa7_8MHz => serializer.serialize_i8(3),
+            Self::LoRa10_4MHz => serializer.serialize_i8(4),
+            Self::LoRa15_63MHz => serializer.serialize_i8(5),
+            Self::LoRa20_83MHz => serializer.serialize_i8(6),
+            Self::LoRa31_25MHz => serializer.serialize_i8(7),
+            Self::LoRa41_67MHz => serializer.serialize_i8(8),
+            Self::LoRa62_5MHz => serializer.serialize_i8(9),
             Self::Fsk(bw) => serializer.serialize_str(alloc::format!("{bw}").as_str()),
         }
     }
