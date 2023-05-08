@@ -3,7 +3,7 @@ use crate::at::responses::{p2p::*, NoResponse};
 use atat::{
     atat_derive::{AtatCmd, AtatEnum},
     serde_at::serde::{Deserialize, Serialize},
-    AtatLen,
+    AtatCmd, AtatLen,
 };
 
 #[derive(Clone, AtatEnum)]
@@ -179,10 +179,28 @@ pub struct SetTxPower {
 #[at_cmd("+PTP=?", P2PTxPower)]
 pub struct GetTxPower {}
 
-#[derive(Clone, AtatCmd)]
-#[at_cmd("+PSEND", NoResponse)]
+#[derive(Clone)]
 pub struct SendData {
     pub payload: atat::heapless::String<500>,
+}
+
+impl AtatCmd<1024> for SendData {
+    type Response = NoResponse;
+    
+
+    fn as_bytes(&self) -> atat::heapless::Vec<u8, 1024> {
+        let mut bytes = atat::heapless::Vec::new();
+        bytes.extend_from_slice(b"AT+PSEND=").unwrap();
+        bytes.extend_from_slice(self.payload.as_bytes().as_slice()).unwrap();
+        bytes
+    }
+
+    fn parse(
+        &self,
+        _resp: Result<&[u8], atat::InternalError>,
+    ) -> Result<Self::Response, atat::Error> {
+        Ok(NoResponse {})
+    }
 }
 
 #[derive(Clone, AtatCmd)]

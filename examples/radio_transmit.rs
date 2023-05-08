@@ -78,15 +78,20 @@ fn main() {
                     let mut chunks: Vec<String> = vec![];
                     let mut index = 0;
                     loop {
+                        if index + 1 == bytes_read {
+                            chunks.push(String::from_utf8(vec![buffer[index]]).unwrap());
+                            break;
+                        }
+
                         if (buffer[index] == b'\n' && buffer[index + 1] == b'\r') || (buffer[index] == b'\r' && buffer[index + 1] == b'\n') {
                             chunks.push("\r\n".to_owned());
                             index += 2;
                         } else {
-                            chunks.push(buffer[index].to_string());
+                            chunks.push(String::from_utf8(vec![buffer[index]]).unwrap());
                             index += 1;
                         }
 
-                        if index + 1 == bytes_read {
+                        if index >= bytes_read {
                             break;
                         }
                     }
@@ -98,6 +103,8 @@ fn main() {
 
                     ingress.write(&swapped_buffer.as_bytes()[0..bytes_read]);
                     ingress.digest();
+
+                    print!("{}", swapped_buffer);
                 }
                 Err(e) => match e.kind() {
                     io::ErrorKind::WouldBlock
@@ -111,7 +118,7 @@ fn main() {
                 },
             }
 
-            std::thread::sleep(Duration::from_millis(1000));
+            std::thread::sleep(Duration::from_millis(1));
         })
         .unwrap();
 
