@@ -30,12 +30,12 @@ fn main() {
     }
 
     // Open serial port
-    let mut serial_tx = serialport::new("/dev/ttyUSB0", 115200)
+    let mut serial_tx = serialport::new("/dev/cu.usbserial-0001", 115200)
         .data_bits(DataBits::Eight)
         .flow_control(FlowControl::None)
         .parity(Parity::None)
         .stop_bits(StopBits::One)
-        .timeout(Duration::from_millis(50000))
+        .timeout(Duration::from_millis(100))
         .open()
         .expect("Could not open serial port");
     let mut serial_rx = serial_tx.try_clone().expect("Could not clone serial port");
@@ -64,7 +64,7 @@ fn main() {
     // Flush serial RX buffer, to ensure that there isn't any remaining left
     // form previous sessions.
 
-    // flush_serial(&mut serial_rx);
+    flush_serial(&mut serial_rx);
 
     // TODO: Add thread for serial reading
     // Launch reading thread, to pass incoming data from serial to the atat ingress
@@ -75,8 +75,8 @@ fn main() {
             match serial_rx.read(&mut buffer[..]) {
                 Ok(0) => {}
                 Ok(bytes_read) => {
-                    ingress.write(&buffer[0..bytes_read]);
-                    ingress.digest();
+                    let swapped_buffer = String::from_utf8(buffer[0..bytes_read].to_vec()).unwrap().replace("\n\r", "\r\n");
+                    ingress.write(&swapped_buffer.as_bytes()[0..bytes_read]);
                     ingress.digest();
                 }
                 Err(e) => match e.kind() {
@@ -89,7 +89,7 @@ fn main() {
                 },
             }
 
-            std::thread::sleep(Duration::from_millis(10));
+            std::thread::sleep(Duration::from_millis(1000));
         })
         .unwrap();
 
@@ -101,7 +101,6 @@ fn main() {
 
         // Configure radio
         let configuration = radio.configure(Configuration::default());
-        println!("Radio configured");
         match configuration {
             Ok(_) => println!("Configuration successful"),
             Err(e) => println!("Configuration failed: {:?}", e),
