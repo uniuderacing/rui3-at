@@ -28,9 +28,11 @@
 #![warn(clippy::cargo)]
 #![warn(rustdoc::all)]
 // #![warn(missing_docs)]
-#![no_std]
+//#![no_std]
 
 extern crate alloc;
+
+use log::info;
 
 pub mod at;
 
@@ -69,6 +71,7 @@ pub struct Configuration {
 /// Default trait implementation for Configuration.
 impl Default for Configuration {
     fn default() -> Self {
+        println!("Default configuration used");
         Self {
             working_mode: at::commands::p2p::WorkingMode::LoRaP2P,
             frequency: 433_000_000,
@@ -159,7 +162,7 @@ where
         Ok(())
     }
 
-    /// Receives data in countinuous mode.
+    /// Receives data in countinous mode.
     ///
     /// Checks for URCs in a loop and returns the data as a vector of u8.
     /// If configured in RX mode, any new values of AT+PRECV will not be accepted.
@@ -377,9 +380,11 @@ where
         configuration: Configuration,
     ) -> Result<(), nb::Error<atat::Error>> {
         // Set the frequency.
+        println!("Config starting");
         self.client.send(&at::commands::p2p::SetP2PFrequency {
             frequency: configuration.frequency,
         })?;
+        println!("Frequency set to {}", configuration.frequency);
         // Set the working mode.
         self.client.send(&at::commands::p2p::SetNetworkWorkingMode {
                 mode: configuration.working_mode,

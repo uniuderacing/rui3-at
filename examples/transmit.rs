@@ -1,7 +1,10 @@
 //! Example that runs on Linux using a serial-USB-adapter.
 use std::{io, thread, time::Duration};
+use std::io::Read;
 
 use atat::bbqueue::BBBuffer;
+use atat::nom::InputTake;
+use log::info;
 use rui3_at::Configuration;
 use serialport::{DataBits, FlowControl, Parity, SerialPort, StopBits};
 
@@ -24,13 +27,22 @@ const TIMER_HZ: u32 = 1000;
 fn main() {
     // TODO: Add support for command line arguments
     // Print available ports
-    let ports = serialport::available_ports().expect("No serial ports found!");
-    for p in ports {
+    let mut ports = serialport::available_ports().expect("No serial ports found!");
+    for p in &ports {
         println!("{}", p.port_name);
     }
 
+    let binding = ports.pop().expect("No serial ports found!");
+    let directory = *binding.port_name.split("/").collect::<Vec<&str>>().last().unwrap();
+
+    let mut path: String = "/dev/".to_owned();
+    let dir: String = directory.to_owned();
+
+    path.push_str(&dir);
+    println!("{}", path);
+
     // Open serial port
-    let mut serial_tx = serialport::new("/dev/cu.usbserial-0001", 115200)
+    let mut serial_tx = serialport::new(path,115200)
         .data_bits(DataBits::Eight)
         .flow_control(FlowControl::None)
         .parity(Parity::None)
@@ -63,7 +75,6 @@ fn main() {
 
     // Flush serial RX buffer, to ensure that there isn't any remaining left
     // form previous sessions.
-
     flush_serial(&mut serial_rx);
 
     // TODO: Add thread for serial reading
@@ -73,7 +84,7 @@ fn main() {
         .spawn(move || loop {
             let mut buffer = [0; 32];
             match serial_rx.read(&mut buffer[..]) {
-                Ok(0) => {}
+                Ok(0) => { info!("Serial reading thread received 0 bytes");}
                 Ok(bytes_read) => {
                     let mut chunks: Vec<String> = vec![];
                     let mut index = 0;
@@ -129,11 +140,12 @@ fn main() {
         println!("Radio created");
 
         // Configure radio
-        let configuration = radio.configure(Configuration::default());
+        /*let configuration = radio.configure(Configuration::default());
+        info!("Configuration sent");
         match configuration {
             Ok(_) => println!("Configuration successful"),
             Err(e) => println!("Configuration failed: {:?}", e),
-        }
+        }*/
 
         // Send data
         loop {
