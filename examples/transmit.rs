@@ -27,19 +27,8 @@ const TIMER_HZ: u32 = 1000;
 fn main() {
     // TODO: Add support for command line arguments
     // Print available ports
-    let mut ports = serialport::available_ports().expect("No serial ports found!");
-    for p in &ports {
-        println!("{}", p.port_name);
-    }
 
-    let binding = ports.pop().expect("No serial ports found!");
-    let directory = *binding.port_name.split("/").collect::<Vec<&str>>().last().unwrap();
-
-    let mut path: String = "/dev/".to_owned();
-    let dir: String = directory.to_owned();
-
-    path.push_str(&dir);
-    println!("{}", path);
+    let path = get_connected_port();
 
     // Open serial port
     let mut serial_tx = serialport::new(path,115200)
@@ -70,11 +59,12 @@ fn main() {
         atat::ClientBuilder::<_, _, _, TIMER_HZ, ATAT_RX_SIZE, RES_CAPACITY, URC_CAPACITY>::new(
             serial_tx, atat_timer, digester, config,
         )
-        .build(queues);
+            .build(queues);
     println!("Atat client created");
 
     // Flush serial RX buffer, to ensure that there isn't any remaining left
     // form previous sessions.
+    flush_serial(&mut serial_rx);
     flush_serial(&mut serial_rx);
 
     // TODO: Add thread for serial reading
@@ -82,12 +72,14 @@ fn main() {
     thread::Builder::new()
         .name("serial_read".to_string())
         .spawn(move || loop {
-            let mut buffer = [0; 32];
+            let mut buffer = [0; 64];
             match serial_rx.read(&mut buffer[..]) {
-                Ok(0) => { info!("Serial reading thread received 0 bytes");}
+                Ok(0) => { }
                 Ok(bytes_read) => {
+                    //print!("Serial reading thread received {} bytes", bytes_read);
                     let mut chunks: Vec<String> = vec![];
                     let mut index = 0;
+                    // println!(" buffer: {:?}", buffer);
                     loop {
                         if index + 1 == bytes_read {
                             chunks.push(String::from_utf8(vec![buffer[index]]).unwrap());
@@ -97,6 +89,7 @@ fn main() {
                         if (buffer[index] == b'\n' && buffer[index + 1] == b'\r') || (buffer[index] == b'\r' && buffer[index + 1] == b'\n') {
                             chunks.push("\r\n".to_owned());
                             index += 2;
+                            break;
                         } else {
                             chunks.push(String::from_utf8(vec![buffer[index]]).unwrap());
                             index += 1;
@@ -106,6 +99,7 @@ fn main() {
                             break;
                         }
                     }
+                    //println!(" chunks: {:?}", chunks);
 
                     let swapped_buffer = chunks.iter().fold(String::new(), |mut acc, x| {
                         acc.push_str(x);
@@ -114,8 +108,9 @@ fn main() {
 
                     ingress.write(&swapped_buffer.as_bytes()[0..bytes_read]);
                     ingress.digest();
+                    ingress.digest();
 
-                    print!("{}", swapped_buffer);
+                    println!(" containing: {}", swapped_buffer);
                 }
                 Err(e) => match e.kind() {
                     io::ErrorKind::WouldBlock
@@ -129,7 +124,7 @@ fn main() {
                 },
             }
 
-            std::thread::sleep(Duration::from_millis(1));
+            thread::sleep(Duration::from_millis(1));
         })
         .unwrap();
 
@@ -140,21 +135,20 @@ fn main() {
         println!("Radio created");
 
         // Configure radio
-        /*let configuration = radio.configure(Configuration::default());
-        info!("Configuration sent");
-        match configuration {
+        println!("Configuring radio");
+        match radio.configure(Configuration::default()) {
             Ok(_) => println!("Configuration successful"),
             Err(e) => println!("Configuration failed: {:?}", e),
-        }*/
+        }
 
         // Send data
         loop {
-            let data_sent = radio.send(&[88]);
-            match data_sent {
+            println!("Sending data");
+            match radio.send(&[88]) {
                 Ok(_) => println!("Data sent"),
                 Err(e) => println!("Data not sent: {:?}", e),
             }
-            thread::sleep(Duration::from_millis(1000));
+            thread::sleep(Duration::from_millis(10));
         }
     });
 
@@ -170,10 +164,10 @@ fn flush_serial(serial_rx: &mut Box<dyn SerialPort>) {
         match serial_rx.read(&mut buf[..]) {
             Ok(0) => break,
             Err(e)
-                if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut =>
-            {
-                break
-            }
+            if e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::TimedOut =>
+                {
+                    break
+                }
             Ok(_) => continue,
             Err(e) => panic!("Error while flushing serial: {}", e),
         }
@@ -272,4 +266,21 @@ mod timer {
             assert!(duration_ms < 1000);
         }
     }
+}
+
+fn get_connected_port() -> String {
+    let mut ports = serialport::available_ports().expect("No serial ports found!");
+    for p in &ports {
+        println!("{}", p.port_name);
+    }
+
+    let binding = ports.pop().expect("No serial ports found!");
+    let directory = *binding.port_name.split("/").collect::<Vec<&str>>().last().unwrap();
+
+    let mut path: String = "/dev/".to_owned();
+    let dir: String = directory.to_owned();
+
+    path.push_str(&dir);
+
+    path
 }

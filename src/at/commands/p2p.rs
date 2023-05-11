@@ -6,14 +6,14 @@ use atat::{
     AtatCmd, AtatLen,
 };
 
-#[derive(Clone, AtatEnum)]
+#[derive(Clone, AtatEnum, Debug)]
 pub enum WorkingMode {
     LoRaP2P = 0,
     LoRaWan = 1,
     FskP2P = 2,
 }
 
-#[derive(Clone, AtatEnum)]
+#[derive(Clone, AtatEnum, Debug)]
 pub enum CodeRate {
     PCR4_5 = 0,
     PCR4_6 = 1,
@@ -21,7 +21,7 @@ pub enum CodeRate {
     PCR4_8 = 3,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Bandwidth {
     LoRa125KHz,
     LoRa250KHz,

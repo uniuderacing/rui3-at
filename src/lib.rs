@@ -141,24 +141,21 @@ where
         data.iter()
             .map(|b| alloc::format!("{b:02X}"))
             .for_each(|s| string_result.push_str(&s).unwrap());
-
         let send_command = at::commands::p2p::SendData {
             payload: string_result,
-        };
-
+        }; // TODO: this loop here.
         // Disable RX.
         self.client.send(&at::commands::p2p::ReceiveData {
             window: at::commands::p2p::ReceiveWindow::StopListening,
         })?;
 
         // Send data.
-        self.client.send(&send_command)?;
-
+        self.client.send_retry(&send_command)?;
+        println!("Sending data: {:?}", data);
         // Re-enable RX.
-        self.client.send(&at::commands::p2p::ReceiveData {
+        self.client.send_retry(&at::commands::p2p::ReceiveData {
             window: at::commands::p2p::ReceiveWindow::Continuous,
         })?;
-
         Ok(())
     }
 
@@ -381,41 +378,50 @@ where
     ) -> Result<(), nb::Error<atat::Error>> {
         // Set the frequency.
         println!("Config starting");
+        println!("Trying to set the frequency to: {}", configuration.frequency);
         self.client.send(&at::commands::p2p::SetP2PFrequency {
             frequency: configuration.frequency,
         })?;
-        println!("Frequency set to {}", configuration.frequency);
+
         // Set the working mode.
+        println!("Trying to set the working mode to: {:?}", configuration.working_mode);
         self.client.send(&at::commands::p2p::SetNetworkWorkingMode {
                 mode: configuration.working_mode,
             })?;
         
         // Set the spreading factor.
+        println!("Trying to set the spreading factor to: {:?}", configuration.spreading_factor);
         self.client
             .send(&at::commands::p2p::SetP2PSpreadingFactor {
                 spreading_factor: configuration.spreading_factor,
             })?;
         // Set the bandwidth.
+        println!("Trying to set the bandwidth to: {:?}", configuration.bandwidth);
         self.client.send(&at::commands::p2p::SetP2PBandwidth {
             bandwidth: configuration.bandwidth,
         })?;
         // Set the code rate.
+        println!("Trying to set the code rate to: {:?}", configuration.code_rate);
         self.client.send(&at::commands::p2p::SetCodeRate {
             code_rate: configuration.code_rate,
         })?;
         // Set the preamble length.
+        println!("Trying to set the preamble length to: {:?}", configuration.preamble_length);
         self.client.send(&at::commands::p2p::SetPreambleLength {
             preamble_length: configuration.preamble_length,
         })?;
         // Set the TX power.
+        println!("Trying to set the TX power to: {:?}", configuration.tx_power);
         self.client.send(&at::commands::p2p::SetTxPower {
             tx_power: configuration.tx_power,
         })?;
         // Set the encryption mode.
+        println!("Trying to set the encryption mode to: {:?}", configuration.encrypted);
         self.client.send(&at::commands::p2p::SetEncryptionMode {
             encryption: configuration.encrypted,
         })?;
         // Set the encryption key.
+        println!("Trying to set the encryption key to: {:?}", configuration.encryption_key);
         self.client.send(&at::commands::p2p::SetEncryptionKey {
             encryption_key: configuration.encryption_key,
         })?;
