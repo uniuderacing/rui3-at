@@ -89,7 +89,6 @@ fn main() {
                         if (buffer[index] == b'\n' && buffer[index + 1] == b'\r') || (buffer[index] == b'\r' && buffer[index + 1] == b'\n') {
                             chunks.push("\r\n".to_owned());
                             index += 2;
-                            break;
                         } else {
                             chunks.push(String::from_utf8(vec![buffer[index]]).unwrap());
                             index += 1;
@@ -110,7 +109,7 @@ fn main() {
                     ingress.digest();
                     ingress.digest();
 
-                    println!(" containing: {}", swapped_buffer);
+                    println!("[READING THREAD] - Buffer: {:?}", swapped_buffer);
                 }
                 Err(e) => match e.kind() {
                     io::ErrorKind::WouldBlock
@@ -124,7 +123,7 @@ fn main() {
                 },
             }
 
-            thread::sleep(Duration::from_millis(1));
+            thread::sleep(Duration::from_millis(100));
         })
         .unwrap();
 
@@ -132,7 +131,7 @@ fn main() {
     thread::spawn(move || {
         // Create Rui3Radio instance
         let mut radio = rui3_at::Rui3Radio::new(client);
-        println!("Radio created");
+        println!("[RADIO THREAD] - Radio created");
 
         // Configure radio
         println!("Configuring radio");
@@ -143,9 +142,9 @@ fn main() {
 
         // Send data
         loop {
-            println!("Sending data");
+            println!("[RADIO THREAD] - Sending data");
             match radio.send(&[88]) {
-                Ok(_) => println!("Data sent"),
+                Ok(_) => println!("[RADIO THREAD] - Data sent"),
                 Err(e) => println!("Data not sent: {:?}", e),
             }
             thread::sleep(Duration::from_millis(10));
