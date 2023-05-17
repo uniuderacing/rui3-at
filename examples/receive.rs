@@ -27,6 +27,7 @@ fn main() {
     // Print available ports
 
     // TODO: Add custom errors ? AT_BUSY_ERROR
+    // TODO: Add function to check if ATE is on
 
     let path = get_connected_port();
 

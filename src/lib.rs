@@ -191,7 +191,7 @@ where
         self.client.send(&receive_command)?;
 
         let receive_command = at::commands::p2p::ReceiveData {
-            window: at::commands::p2p::ReceiveWindow::OnePacket,
+            window: at::commands::p2p::ReceiveWindow::Continuous,
         };
 
         // Enable RX.
@@ -223,9 +223,8 @@ where
                     self.rssi = rssi;
                     self.snr = snr;
                 }
-                None => {
-                    return Ok(alloc::vec![]);
-                }
+                Some(at::urc::URCMessages::PeerToPeerMessage { rssi, snr, data }) => {}
+                None => {}
             }
         }
     }
@@ -308,6 +307,7 @@ where
                             self.rssi = rssi;
                             self.snr = snr;
                         }
+                        Some(at::urc::URCMessages::PeerToPeerMessage { rssi, snr, data }) => {}
                         None => {
                             continue;
                         }
@@ -372,6 +372,11 @@ where
                 self.snr = snr;
                 Ok(alloc::vec![])
             }
+            Some(at::urc::URCMessages::PeerToPeerMessage { rssi, snr, data }) => {
+                self.rssi = rssi;
+                self.snr = snr;
+                Ok(data)
+            }
             None => Ok(alloc::vec![]),
         }
     }
@@ -385,16 +390,6 @@ where
         &mut self,
         configuration: Configuration,
     ) -> Result<(), nb::Error<atat::Error>> {
-        // Set the frequency.
-        println!("Config starting");
-        println!(
-            "Trying to set the frequency to: {}",
-            configuration.frequency
-        );
-        self.client.send(&at::commands::p2p::SetP2PFrequency {
-            frequency: configuration.frequency,
-        })?;
-
         // // Set the working mode.
         // println!(
         //     "Trying to set the working mode to: {:?}",
@@ -404,6 +399,16 @@ where
         //     .send(&at::commands::p2p::SetNetworkWorkingMode {
         //         mode: configuration.working_mode,
         //     })?;
+
+        // Set the frequency.
+        println!("Config starting");
+        println!(
+            "Trying to set the frequency to: {}",
+            configuration.frequency
+        );
+        self.client.send(&at::commands::p2p::SetP2PFrequency {
+            frequency: configuration.frequency,
+        })?;
 
         // Set the spreading factor.
         println!(

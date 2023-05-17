@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "type": "lldb",
             "request": "launch",
@@ -35,6 +36,42 @@
                 ],
                 "filter": {
                     "name": "radio_receive",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'transmit'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=transmit",
+                    "--package=rui3-at"
+                ],
+                "filter": {
+                    "name": "transmit",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'receive'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=receive",
+                    "--package=rui3-at"
+                ],
+                "filter": {
+                    "name": "receive",
                     "kind": "example"
                 }
             },

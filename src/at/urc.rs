@@ -6,6 +6,7 @@ use text_io::scan;
 pub enum URCMessages {
     PeerToPeerData(Vec<u8>),
     PeerToPeerInfo { rssi: i16, snr: i16 },
+    PeerToPeerMessage { rssi: i16, snr: i16, data: Vec<u8> },
 }
 
 impl AtatUrc for URCMessages {
@@ -18,25 +19,27 @@ impl AtatUrc for URCMessages {
         if status.starts_with("RXP2P") {
             let rssi: i16;
             let snr: i16;
-
-            scan!(status.bytes() => "RXP2P, RSSI {}, SNR {}", rssi, snr);
-
-            return Some(Self::PeerToPeerInfo { rssi, snr });
-        }
-
-        // Peer to peer data.
-        if status.chars().all(|c| "0123456789ABCDEF".contains(c)) && status.len() % 2 == 0 {
-            // All the characters are hexadecimal.
-
-            // Split characters two by two and convert them to bytes.
+            let data_byte: i16;
             let mut data = Vec::new();
-            for i in (0..status.len()).step_by(2) {
-                let byte = u8::from_str_radix(&status[i..i + 2], 16).unwrap();
-                data.push(byte);
-            }
+            let status_clone = status.clone();
 
-            return Some(Self::PeerToPeerData(data));
+            scan!(status_clone.bytes() => "RXP2P:{}:{}", rssi, snr);
+
+            // TODO: Remove chars untill "snr:".
+            
+            // Peer to peer data.
+            if status.chars().all(|c| "0123456789ABCDEF".contains(c)) && status.len() % 2 == 0 {
+                // All the characters are hexadecimal.
+    
+                // Split characters two by two and convert them to bytes.
+                for i in (0..status.len()).step_by(2) {
+                    let byte = u8::from_str_radix(&status[i..i + 2], 16).unwrap();
+                    data.push(byte);
+                }
+            }
+            return Some(Self::PeerToPeerMessage{rssi, snr, data});
         }
+
 
         None
     }
