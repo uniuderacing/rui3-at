@@ -26,10 +26,12 @@ fn main() {
     // TODO: Add support for command line arguments
     // Print available ports
 
+    // TODO: Add custom errors ? AT_BUSY_ERROR
+
     let path = get_connected_port();
 
     // Open serial port
-    let mut serial_tx = serialport::new(path, 115200)
+    let serial_tx = serialport::new(path, 115200)
         .data_bits(DataBits::Eight)
         .flow_control(FlowControl::None)
         .parity(Parity::None)
@@ -65,7 +67,6 @@ fn main() {
     flush_serial(&mut serial_rx);
     flush_serial(&mut serial_rx);
 
-    // TODO: Add thread for serial reading
     // Launch reading thread, to pass incoming data from serial to the atat ingress
     thread::Builder::new()
         .name("serial_read".to_string())
@@ -138,14 +139,16 @@ fn main() {
             Err(e) => println!("Configuration failed: {:?}", e),
         }
 
-        // Send data
+        // Receive data
         loop {
-            println!("[RADIO THREAD] - Sending data");
-            match radio.send(&[88]) {
-                Ok(_) => println!("[RADIO THREAD] - Data sent"),
-                Err(e) => println!("Data not sent: {:?}", e),
+            match radio.receive() {
+                Ok(data) => {
+                    println!("[RADIO THREAD] - Received data: {:?}", data);
+                }
+                Err(e) => {
+                    println!("[RADIO THREAD] - Error while receiving data: {:?}", e);
+                }
             }
-            thread::sleep(Duration::from_millis(10));
         }
     });
 

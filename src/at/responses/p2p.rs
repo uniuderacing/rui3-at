@@ -1,4 +1,4 @@
-use crate::at::commands::p2p::{Bandwidth, CodeRate, WorkingMode};
+use crate::at::commands::p2p::{Bandwidth, CodeRate, WorkingMode, Encrypted};
 use atat::atat_derive::AtatResp;
 
 #[derive(Clone, AtatResp)]
@@ -46,7 +46,7 @@ pub struct P2PTxPower {
 #[derive(Clone, AtatResp)]
 pub struct P2PEncryptionMode {
     #[at_arg(position = 0)]
-    pub encryption: bool,
+    pub encryption: Encrypted,
 }
 
 #[derive(Clone, AtatResp)]

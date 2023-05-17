@@ -30,9 +30,9 @@
 // #![warn(missing_docs)]
 //#![no_std]
 
-extern crate alloc;
+use at::commands::p2p::Encrypted;
 
-use log::info;
+extern crate alloc;
 
 pub mod at;
 
@@ -63,7 +63,7 @@ pub struct Configuration {
     /// The TX power used.
     pub tx_power: u8,
     /// Whether the encryption is enabled or not.
-    pub encrypted: bool,
+    pub encrypted: Encrypted,
     /// The encryption key used.
     pub encryption_key: atat::heapless::String<16>,
 }
@@ -74,13 +74,13 @@ impl Default for Configuration {
         println!("Default configuration used");
         Self {
             working_mode: at::commands::p2p::WorkingMode::LoRaP2P,
-            frequency: 433_000_000,
+            frequency: 868_000_000,
             spreading_factor: 7,
             bandwidth: at::commands::p2p::Bandwidth::LoRa125KHz,
             code_rate: at::commands::p2p::CodeRate::PCR4_5,
             preamble_length: 8,
             tx_power: 14,
-            encrypted: false,
+            encrypted: Encrypted::False,
             encryption_key: "".into(),
         }
     }
@@ -137,14 +137,17 @@ where
     pub fn send(&mut self, data: &[u8]) -> Result<(), nb::Error<atat::Error>> {
         // Convert each byte of data to a hex string.
         let mut string_result: atat::heapless::String<500> = "".into();
+        // Add \r\n to the end of the string.
 
         data.iter()
             .map(|b| alloc::format!("{b:02X}"))
             .for_each(|s| string_result.push_str(&s).unwrap());
+
+        string_result.push_str("\r\n").unwrap();
         let send_command = at::commands::p2p::SendData {
             payload: string_result,
         }; // TODO: this loop here.
-        // Disable RX.
+           // Disable RX.
         self.client.send(&at::commands::p2p::ReceiveData {
             window: at::commands::p2p::ReceiveWindow::StopListening,
         })?;
@@ -182,7 +185,7 @@ where
         // Recieve is blocking until data is received.
 
         let receive_command = at::commands::p2p::ReceiveData {
-            window: at::commands::p2p::ReceiveWindow::Continuous,
+            window: at::commands::p2p::ReceiveWindow::OnePacket,
         };
 
         // Enable RX.
@@ -378,53 +381,81 @@ where
     ) -> Result<(), nb::Error<atat::Error>> {
         // Set the frequency.
         println!("Config starting");
-        println!("Trying to set the frequency to: {}", configuration.frequency);
+        println!(
+            "Trying to set the frequency to: {}",
+            configuration.frequency
+        );
         self.client.send(&at::commands::p2p::SetP2PFrequency {
             frequency: configuration.frequency,
         })?;
 
-        // Set the working mode.
-        println!("Trying to set the working mode to: {:?}", configuration.working_mode);
-        self.client.send(&at::commands::p2p::SetNetworkWorkingMode {
-                mode: configuration.working_mode,
-            })?;
-        
+        // // Set the working mode.
+        // println!(
+        //     "Trying to set the working mode to: {:?}",
+        //     configuration.working_mode
+        // );
+        // self.client
+        //     .send(&at::commands::p2p::SetNetworkWorkingMode {
+        //         mode: configuration.working_mode,
+        //     })?;
+
         // Set the spreading factor.
-        println!("Trying to set the spreading factor to: {:?}", configuration.spreading_factor);
+        println!(
+            "Trying to set the spreading factor to: {:?}",
+            configuration.spreading_factor
+        );
         self.client
             .send(&at::commands::p2p::SetP2PSpreadingFactor {
                 spreading_factor: configuration.spreading_factor,
             })?;
         // Set the bandwidth.
-        println!("Trying to set the bandwidth to: {:?}", configuration.bandwidth);
+        println!(
+            "Trying to set the bandwidth to: {:?}",
+            configuration.bandwidth
+        );
         self.client.send(&at::commands::p2p::SetP2PBandwidth {
             bandwidth: configuration.bandwidth,
         })?;
         // Set the code rate.
-        println!("Trying to set the code rate to: {:?}", configuration.code_rate);
+        println!(
+            "Trying to set the code rate to: {:?}",
+            configuration.code_rate
+        );
         self.client.send(&at::commands::p2p::SetCodeRate {
             code_rate: configuration.code_rate,
         })?;
         // Set the preamble length.
-        println!("Trying to set the preamble length to: {:?}", configuration.preamble_length);
+        println!(
+            "Trying to set the preamble length to: {:?}",
+            configuration.preamble_length
+        );
         self.client.send(&at::commands::p2p::SetPreambleLength {
             preamble_length: configuration.preamble_length,
         })?;
         // Set the TX power.
-        println!("Trying to set the TX power to: {:?}", configuration.tx_power);
+        println!(
+            "Trying to set the TX power to: {:?}",
+            configuration.tx_power
+        );
         self.client.send(&at::commands::p2p::SetTxPower {
             tx_power: configuration.tx_power,
         })?;
-        // Set the encryption mode.
-        println!("Trying to set the encryption mode to: {:?}", configuration.encrypted);
-        self.client.send(&at::commands::p2p::SetEncryptionMode {
-            encryption: configuration.encrypted,
-        })?;
-        // Set the encryption key.
-        println!("Trying to set the encryption key to: {:?}", configuration.encryption_key);
-        self.client.send(&at::commands::p2p::SetEncryptionKey {
-            encryption_key: configuration.encryption_key,
-        })?;
+        // // Set the encryption mode.
+        // println!(
+        //     "Trying to set the encryption mode to: {:?}",
+        //     configuration.encrypted
+        // );
+        // self.client.send(&at::commands::p2p::SetEncryptionMode {
+        //     encryption: configuration.encrypted,
+        // })?;
+        // // Set the encryption key.
+        // println!(
+        //     "Trying to set the encryption key to: {:?}",
+        //     configuration.encryption_key
+        // );
+        // self.client.send(&at::commands::p2p::SetEncryptionKey {
+        //     encryption_key: configuration.encryption_key,
+        // })?;
 
         Ok(())
     }
@@ -642,7 +673,7 @@ where
     #[allow(missing_doc_code_examples)]
     #[allow(clippy::missing_errors_doc)]
     /// Sets the encryption mode.
-    pub fn set_encryption_mode(&mut self, encryption: bool) -> Result<(), nb::Error<atat::Error>> {
+    pub fn set_encryption_mode(&mut self, encryption: Encrypted) -> Result<(), nb::Error<atat::Error>> {
         // Set the encryption mode.
         self.client
             .send(&at::commands::p2p::SetEncryptionMode { encryption })?;
@@ -652,7 +683,7 @@ where
     #[allow(missing_doc_code_examples)]
     #[allow(clippy::missing_errors_doc)]
     /// Gets the encryption mode.
-    pub fn get_encryption_mode(&mut self) -> Result<bool, nb::Error<atat::Error>> {
+    pub fn get_encryption_mode(&mut self) -> Result<Encrypted, nb::Error<atat::Error>> {
         // Get the encryption mode.
         let encryption = self.client.send(&at::commands::p2p::GetEncryptionMode {})?;
         Ok(encryption.encryption)

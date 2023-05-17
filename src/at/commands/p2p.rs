@@ -21,6 +21,12 @@ pub enum CodeRate {
     PCR4_8 = 3,
 }
 
+#[derive(Clone, AtatEnum, Debug)]
+pub enum Encrypted {
+    False = 0,
+    True = 1,
+}
+
 #[derive(Clone, Debug)]
 pub enum Bandwidth {
     LoRa125KHz,
@@ -186,12 +192,13 @@ pub struct SendData {
 
 impl AtatCmd<1024> for SendData {
     type Response = NoResponse;
-    
 
     fn as_bytes(&self) -> atat::heapless::Vec<u8, 1024> {
         let mut bytes = atat::heapless::Vec::new();
         bytes.extend_from_slice(b"AT+PSEND=").unwrap();
-        bytes.extend_from_slice(self.payload.as_bytes().as_slice()).unwrap();
+        bytes
+            .extend_from_slice(self.payload.as_bytes().as_slice())
+            .unwrap();
         bytes
     }
 
@@ -212,7 +219,7 @@ pub struct ReceiveData {
 #[derive(Clone, AtatCmd)]
 #[at_cmd("+ENCRY", NoResponse)]
 pub struct SetEncryptionMode {
-    pub encryption: bool,
+    pub encryption: Encrypted,
 }
 
 #[derive(Clone, AtatCmd)]
