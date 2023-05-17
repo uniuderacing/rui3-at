@@ -183,6 +183,12 @@ where
     /// TODO
     pub fn receive(&mut self) -> Result<alloc::vec::Vec<u8>, nb::Error<atat::Error>> {
         // Recieve is blocking until data is received.
+        let receive_command = at::commands::p2p::ReceiveData {
+            window: at::commands::p2p::ReceiveWindow::StopListening,
+        };
+
+        // Enable RX.
+        self.client.send(&receive_command)?;
 
         let receive_command = at::commands::p2p::ReceiveData {
             window: at::commands::p2p::ReceiveWindow::OnePacket,
